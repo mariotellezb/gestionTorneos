@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torneos - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>🏆 Torneos</h3>
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Gestión de Torneos</h1>
+            <button id="createTournamentBtn" class="btn btn-success" style="display:none;">+ Crear Torneo</button>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- FILTROS Y BÚSQUEDA -->
+            <div class="card">
+                <form id="filterForm">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" id="searchTournament" placeholder="Buscar torneo por nombre...">
+                    </div>
+                </form>
+            </div>
+
+            <!-- LISTA DE TORNEOS -->
+            <div id="tournamentsContainer"></div>
+
+            <!-- TABLA DE TORNEOS (fallback) -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Deporte</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th>Ubicación</th>
+                        <th>Estado</th>
+                        <th>Equipos</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="tournamentsTable">
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: #cbd5e1;">Cargando torneos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREAR/EDITAR TORNEO -->
+<div id="tournamentModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Crear Torneo</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('tournamentModal')">&times;</button>
+        </div>
+        <form id="tournamentForm">
+            <div class="form-group">
+                <label>Nombre del Torneo</label>
+                <input type="text" id="tournamentName" required>
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="tournamentDescription" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Deporte</label>
+                <select id="tournamentSport" required>
+                    <option value="">Selecciona un deporte</option>
+                    <option value="Futbol">Futbol</option>
+                    <option value="Baloncesto">Baloncesto</option>
+                    <option value="Voleibol">Voleibol</option>
+                    <option value="Tenis">Tenis</option>
+                    <option value="Badminton">Badminton</option>
+                    <option value="Otros">Otros</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fecha de Inicio</label>
+                <input type="date" id="tournamentStartDate" required>
+            </div>
+            <div class="form-group">
+                <label>Fecha de Fin</label>
+                <input type="date" id="tournamentEndDate" required>
+            </div>
+            <div class="form-group">
+                <label>Ubicación</label>
+                <input type="text" id="tournamentLocation" required>
+            </div>
+            <div class="form-group">
+                <label>Equipos Máximos</label>
+                <input type="number" id="tournamentMaxTeams" value="16" required>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('tournamentModal')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL VER DETALLES -->
+<div id="detailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="detailsTitle">Detalles del Torneo</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('detailsModal')">&times;</button>
+        </div>
+        <div id="detailsContent"></div>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+let currentEditingTournamentId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    app.checkAuth();
+    
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+
+        if (app.isOrganizer()) {
+            document.getElementById('createTournamentBtn').style.display = 'inline-block';
+        }
+    }
+
+    loadTournaments();
+    app.initializeNavigation();
+
+    // Event listeners
+    document.getElementById('createTournamentBtn').addEventListener('click', openCreateModal);
+    document.getElementById('tournamentForm').addEventListener('submit', saveTournament);
+    document.getElementById('searchTournament').addEventListener('input', filterTournaments);
+});
+
+function loadTournaments() {
+    const tournaments = db.getAllTournaments();
+    const tbody = document.getElementById('tournamentsTable');
+    tbody.innerHTML = '';
+
+    if (tournaments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #cbd5e1;">No hay torneos registrados</td></tr>';
+        return;
+    }
+
+    tournaments.forEach(tournament => {
+        const row = document.createElement('tr');
+        const teamsCount = tournament.teams ? tournament.teams.length : 0;
+        
+        row.innerHTML = `
+            <td>${tournament.name}</td>
+            <td>${tournament.sport}</td>
+            <td>${app.formatDate(tournament.startDate)}</td>
+            <td>${app.formatDate(tournament.endDate)}</td>
+            <td>${tournament.location}</td>
+            <td><span style="color: #10b981; font-weight: bold;">${tournament.status}</span></td>
+            <td>${teamsCount}/${tournament.maxTeams}</td>
+            <td>
+                <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="viewTournamentDetails(${tournament.id})">Ver</button>
+                ${app.canEditTournament(tournament.id) ? `
+                    <button class="btn btn-warning" style="padding: 5px 10px;" onclick="editTournament(${tournament.id})">Editar</button>
+                    <button class="btn btn-danger" style="padding: 5px 10px;" onclick="deleteTournament(${tournament.id})">Eliminar</button>
+                ` : ''}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function openCreateModal() {
+    currentEditingTournamentId = null;
+    document.getElementById('modalTitle').textContent = 'Crear Torneo';
+    document.getElementById('tournamentForm').reset();
+    app.showModal('tournamentModal');
+}
+
+function editTournament(tournamentId) {
+    const tournament = db.getTournamentById(tournamentId);
+    if (!tournament) return;
+
+    if (!app.canEditTournament(tournamentId)) {
+        app.showAlert('No tienes permiso para editar este torneo', 'danger');
+        return;
+    }
+
+    currentEditingTournamentId = tournamentId;
+    document.getElementById('modalTitle').textContent = 'Editar Torneo';
+    document.getElementById('tournamentName').value = tournament.name;
+    document.getElementById('tournamentDescription').value = tournament.description;
+    document.getElementById('tournamentSport').value = tournament.sport;
+    document.getElementById('tournamentStartDate').value = tournament.startDate;
+    document.getElementById('tournamentEndDate').value = tournament.endDate;
+    document.getElementById('tournamentLocation').value = tournament.location;
+    document.getElementById('tournamentMaxTeams').value = tournament.maxTeams;
+
+    app.showModal('tournamentModal');
+}
+
+function saveTournament(e) {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById('tournamentName').value,
+        description: document.getElementById('tournamentDescription').value,
+        sport: document.getElementById('tournamentSport').value,
+        startDate: document.getElementById('tournamentStartDate').value,
+        endDate: document.getElementById('tournamentEndDate').value,
+        location: document.getElementById('tournamentLocation').value,
+        maxTeams: parseInt(document.getElementById('tournamentMaxTeams').value),
+        organizerId: db.getCurrentUser().id
+    };
+
+    let result;
+    if (currentEditingTournamentId) {
+        result = db.updateTournament(currentEditingTournamentId, data);
+    } else {
+        result = db.createTournament(data);
+    }
+
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        app.closeModal('tournamentModal');
+        loadTournaments();
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function deleteTournament(tournamentId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este torneo?')) return;
+
+    const result = db.deleteTournament(tournamentId);
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        loadTournaments();
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function viewTournamentDetails(tournamentId) {
+    const tournament = db.getTournamentById(tournamentId);
+    if (!tournament) return;
+
+    const teams = tournament.teams ? tournament.teams.map(id => db.getTeamById(id)).filter(t => t) : [];
+    const organizerName = app.getUserName(tournament.organizerId);
+
+    let detailsHTML = `
+        <div style="margin-bottom: 15px;">
+            <p><strong>Nombre:</strong> ${tournament.name}</p>
+            <p><strong>Descripción:</strong> ${tournament.description}</p>
+            <p><strong>Deporte:</strong> ${tournament.sport}</p>
+            <p><strong>Organizador:</strong> ${organizerName}</p>
+            <p><strong>Fecha de Inicio:</strong> ${app.formatDate(tournament.startDate)}</p>
+            <p><strong>Fecha de Fin:</strong> ${app.formatDate(tournament.endDate)}</p>
+            <p><strong>Ubicación:</strong> ${tournament.location}</p>
+            <p><strong>Equipos:</strong> ${teams.length}/${tournament.maxTeams}</p>
+            <p><strong>Estado:</strong> <span style="color: #10b981; font-weight: bold;">${tournament.status}</span></p>
+        </div>
+        <div>
+            <h4 style="margin-bottom: 10px; color: #38bdf8;">Equipos Participantes:</h4>
+            ${teams.length > 0 ? `
+                <ul style="list-style: none; padding: 0;">
+                    ${teams.map(team => `<li style="padding: 5px 0;">• ${team.name}</li>`).join('')}
+                </ul>
+            ` : '<p style="color: #cbd5e1;">No hay equipos registrados aún</p>'}
+        </div>
+    `;
+
+    document.getElementById('detailsContent').innerHTML = detailsHTML;
+    document.getElementById('detailsTitle').textContent = tournament.name;
+    app.showModal('detailsModal');
+}
+
+function filterTournaments() {
+    const searchValue = document.getElementById('searchTournament').value.toLowerCase();
+    const rows = document.querySelectorAll('#tournamentsTable tr');
+
+    rows.forEach((row, index) => {
+        if (index === 0) return; // Skip header
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchValue) ? '' : 'none';
+    });
+}
+</script>
+</body>
+</html>

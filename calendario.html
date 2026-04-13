@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>🏆 Torneos</h3>
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Calendario de Partidos</h1>
+            <button id="createMatchBtn" class="btn btn-success" style="display:none;">+ Crear Partido</button>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- FILTROS -->
+            <div class="card">
+                <form id="filterForm">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label>Filtrar por Torneo</label>
+                            <select id="filterTournament" onchange="filterMatches()">
+                                <option value="">Todos los torneos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Filtrar por Estado</label>
+                            <select id="filterStatus" onchange="filterMatches()">
+                                <option value="">Todos los estados</option>
+                                <option value="scheduled">Programado</option>
+                                <option value="played">Jugado</option>
+                                <option value="cancelled">Cancelado</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TABLA DE PARTIDOS -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Torneo</th>
+                        <th>Equipo Local</th>
+                        <th>Equipo Visitante</th>
+                        <th>Fecha y Hora</th>
+                        <th>Ubicación</th>
+                        <th>Estado</th>
+                        <th>Resultado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="matchesTable">
+                    <tr>
+                        <td colspan="8" style="text-align: center; color: #cbd5e1;">Cargando partidos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREAR/EDITAR PARTIDO -->
+<div id="matchModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Crear Partido</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('matchModal')">&times;</button>
+        </div>
+        <form id="matchForm">
+            <div class="form-group">
+                <label>Torneo</label>
+                <select id="matchTournament" required onchange="loadTournamentTeams()">
+                    <option value="">Selecciona un torneo</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Equipo Local</label>
+                <select id="matchHomeTeam" required>
+                    <option value="">Selecciona un equipo</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Equipo Visitante</label>
+                <select id="matchAwayTeam" required>
+                    <option value="">Selecciona un equipo</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Fecha</label>
+                <input type="date" id="matchDate" required>
+            </div>
+            <div class="form-group">
+                <label>Hora</label>
+                <input type="time" id="matchTime" required>
+            </div>
+            <div class="form-group">
+                <label>Ubicación</label>
+                <input type="text" id="matchLocation" required>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('matchModal')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+let currentEditingMatchId = null;
+let allMatches = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    app.checkAuth();
+    
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+
+        if (app.isOrganizer()) {
+            document.getElementById('createMatchBtn').style.display = 'inline-block';
+        }
+    }
+
+    loadTournaments();
+    loadMatches();
+    app.initializeNavigation();
+
+    document.getElementById('createMatchBtn').addEventListener('click', openCreateModal);
+    document.getElementById('matchForm').addEventListener('submit', saveMatch);
+});
+
+function loadTournaments() {
+    const tournaments = db.getAllTournaments();
+    const select = document.getElementById('filterTournament');
+    const matchSelect = document.getElementById('matchTournament');
+
+    tournaments.forEach(tournament => {
+        const option1 = document.createElement('option');
+        option1.value = tournament.id;
+        option1.textContent = tournament.name;
+        select.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = tournament.id;
+        option2.textContent = tournament.name;
+        matchSelect.appendChild(option2);
+    });
+}
+
+function loadTournamentTeams() {
+    const tournamentId = parseInt(document.getElementById('matchTournament').value);
+    const tournament = db.getTournamentById(tournamentId);
+    
+    const homeTeamSelect = document.getElementById('matchHomeTeam');
+    const awayTeamSelect = document.getElementById('matchAwayTeam');
+    
+    homeTeamSelect.innerHTML = '<option value="">Selecciona un equipo</option>';
+    awayTeamSelect.innerHTML = '<option value="">Selecciona un equipo</option>';
+
+    if (!tournament || !tournament.teams || tournament.teams.length === 0) {
+        return;
+    }
+
+    tournament.teams.forEach(teamId => {
+        const team = db.getTeamById(teamId);
+        if (team) {
+            const option1 = document.createElement('option');
+            option1.value = team.id;
+            option1.textContent = team.name;
+            homeTeamSelect.appendChild(option1);
+
+            const option2 = document.createElement('option');
+            option2.value = team.id;
+            option2.textContent = team.name;
+            awayTeamSelect.appendChild(option2);
+        }
+    });
+}
+
+function loadMatches() {
+    allMatches = db.getAllMatches();
+    displayMatches(allMatches);
+}
+
+function displayMatches(matches) {
+    const tbody = document.getElementById('matchesTable');
+    tbody.innerHTML = '';
+
+    if (matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #cbd5e1;">No hay partidos programados</td></tr>';
+        return;
+    }
+
+    matches.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time)).forEach(match => {
+        const tournament = db.getTournamentById(match.tournamentId);
+        const homeTeam = db.getTeamById(match.homeTeamId);
+        const awayTeam = db.getTeamById(match.awayTeamId);
+
+        const row = document.createElement('tr');
+        const resultText = match.homeScore !== null && match.awayScore !== null 
+            ? `${match.homeScore} - ${match.awayScore}` 
+            : '-';
+
+        row.innerHTML = `
+            <td>${tournament ? tournament.name : 'Torneo desconocido'}</td>
+            <td>${homeTeam ? homeTeam.name : 'Equipo desconocido'}</td>
+            <td>${awayTeam ? awayTeam.name : 'Equipo desconocido'}</td>
+            <td>${app.formatDate(match.date)} ${match.time}</td>
+            <td>${match.location}</td>
+            <td><span style="color: #f59e0b;">${match.status}</span></td>
+            <td>${resultText}</td>
+            <td>
+                ${app.isOrganizer() ? `
+                    <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="editMatch(${match.id})">Editar</button>
+                ` : ''}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function openCreateModal() {
+    currentEditingMatchId = null;
+    document.getElementById('modalTitle').textContent = 'Crear Partido';
+    document.getElementById('matchForm').reset();
+    document.getElementById('matchTournament').value = '';
+    document.getElementById('matchHomeTeam').innerHTML = '<option value="">Selecciona un equipo</option>';
+    document.getElementById('matchAwayTeam').innerHTML = '<option value="">Selecciona un equipo</option>';
+    app.showModal('matchModal');
+}
+
+function editMatch(matchId) {
+    const match = db.getMatchById(matchId);
+    if (!match) return;
+
+    currentEditingMatchId = matchId;
+    document.getElementById('modalTitle').textContent = 'Editar Partido';
+    document.getElementById('matchTournament').value = match.tournamentId;
+    loadTournamentTeams();
+
+    setTimeout(() => {
+        document.getElementById('matchHomeTeam').value = match.homeTeamId;
+        document.getElementById('matchAwayTeam').value = match.awayTeamId;
+    }, 100);
+
+    document.getElementById('matchDate').value = match.date;
+    document.getElementById('matchTime').value = match.time;
+    document.getElementById('matchLocation').value = match.location;
+
+    app.showModal('matchModal');
+}
+
+function saveMatch(e) {
+    e.preventDefault();
+
+    const data = {
+        tournamentId: parseInt(document.getElementById('matchTournament').value),
+        homeTeamId: parseInt(document.getElementById('matchHomeTeam').value),
+        awayTeamId: parseInt(document.getElementById('matchAwayTeam').value),
+        date: document.getElementById('matchDate').value,
+        time: document.getElementById('matchTime').value,
+        location: document.getElementById('matchLocation').value
+    };
+
+    if (data.homeTeamId === data.awayTeamId) {
+        app.showAlert('El equipo local y visitante deben ser diferentes', 'danger');
+        return;
+    }
+
+    let result;
+    if (currentEditingMatchId) {
+        result = db.updateMatch(currentEditingMatchId, data);
+    } else {
+        result = db.createMatch(data);
+    }
+
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        app.closeModal('matchModal');
+        loadMatches();
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function filterMatches() {
+    const tournamentFilter = parseInt(document.getElementById('filterTournament').value);
+    const statusFilter = document.getElementById('filterStatus').value;
+
+    const filtered = allMatches.filter(match => {
+        const tournamentMatch = !tournamentFilter || match.tournamentId === tournamentFilter;
+        const statusMatch = !statusFilter || match.status === statusFilter;
+        return tournamentMatch && statusMatch;
+    });
+
+    displayMatches(filtered);
+}
+
+// Add helper method to database
+if (!db.getMatchById) {
+    db.getMatchById = function(matchId) {
+        const matches = JSON.parse(localStorage.getItem('matches'));
+        return matches.find(m => m.id === matchId);
+    }
+}
+</script>
+</body>
+</html>

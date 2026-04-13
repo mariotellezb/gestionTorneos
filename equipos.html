@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipos - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>🏆 Torneos</h3>
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Gestión de Equipos</h1>
+            <button id="createTeamBtn" class="btn btn-success" style="display:none;">+ Crear Equipo</button>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- BÚSQUEDA -->
+            <div class="card">
+                <form id="filterForm">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" id="searchTeam" placeholder="Buscar equipo por nombre...">
+                    </div>
+                </form>
+            </div>
+
+            <!-- LISTA DE EQUIPOS -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Capitán</th>
+                        <th>Miembros</th>
+                        <th>Fecha Registro</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="teamsTable">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #cbd5e1;">Cargando equipos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREAR/EDITAR EQUIPO -->
+<div id="teamModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Crear Equipo</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('teamModal')">&times;</button>
+        </div>
+        <form id="teamForm">
+            <div class="form-group">
+                <label>Nombre del Equipo</label>
+                <input type="text" id="teamName" required>
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="teamDescription" required></textarea>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('teamModal')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL VER DETALLES Y GESTIONAR MIEMBROS -->
+<div id="teamDetailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="teamDetailsTitle">Detalles del Equipo</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('teamDetailsModal')">&times;</button>
+        </div>
+        <div id="teamDetailsContent"></div>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+let currentEditingTeamId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    app.checkAuth();
+    
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+
+        if (app.isCaptain()) {
+            document.getElementById('createTeamBtn').style.display = 'inline-block';
+        }
+    }
+
+    loadTeams();
+    app.initializeNavigation();
+
+    // Event listeners
+    document.getElementById('createTeamBtn').addEventListener('click', openCreateModal);
+    document.getElementById('teamForm').addEventListener('submit', saveTeam);
+    document.getElementById('searchTeam').addEventListener('input', filterTeams);
+});
+
+function loadTeams() {
+    const teams = db.getAllTeams();
+    const tbody = document.getElementById('teamsTable');
+    tbody.innerHTML = '';
+
+    if (teams.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #cbd5e1;">No hay equipos registrados</td></tr>';
+        return;
+    }
+
+    teams.forEach(team => {
+        const row = document.createElement('tr');
+        const captainName = app.getUserName(team.captainId);
+        
+        row.innerHTML = `
+            <td>${team.name}</td>
+            <td>${team.description}</td>
+            <td>${captainName}</td>
+            <td>${team.members.length}</td>
+            <td>${app.formatDate(team.registeredDate)}</td>
+            <td>
+                <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="viewTeamDetails(${team.id})">Ver</button>
+                ${app.currentUser.id === team.captainId || app.isAdmin() ? `
+                    <button class="btn btn-warning" style="padding: 5px 10px;" onclick="editTeam(${team.id})">Editar</button>
+                    <button class="btn btn-danger" style="padding: 5px 10px;" onclick="deleteTeam(${team.id})">Eliminar</button>
+                ` : ''}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function openCreateModal() {
+    currentEditingTeamId = null;
+    document.getElementById('modalTitle').textContent = 'Crear Equipo';
+    document.getElementById('teamForm').reset();
+    app.showModal('teamModal');
+}
+
+function editTeam(teamId) {
+    const team = db.getTeamById(teamId);
+    if (!team) return;
+
+    if (app.currentUser.id !== team.captainId && !app.isAdmin()) {
+        app.showAlert('No tienes permiso para editar este equipo', 'danger');
+        return;
+    }
+
+    currentEditingTeamId = teamId;
+    document.getElementById('modalTitle').textContent = 'Editar Equipo';
+    document.getElementById('teamName').value = team.name;
+    document.getElementById('teamDescription').value = team.description;
+
+    app.showModal('teamModal');
+}
+
+function saveTeam(e) {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById('teamName').value,
+        description: document.getElementById('teamDescription').value
+    };
+
+    let result;
+    if (currentEditingTeamId) {
+        result = db.updateTeam(currentEditingTeamId, data);
+    } else {
+        result = db.createTeam(data.name, data.description, db.getCurrentUser().id);
+    }
+
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        app.closeModal('teamModal');
+        loadTeams();
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function deleteTeam(teamId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este equipo?')) return;
+
+    const result = db.deleteTeam(teamId);
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        loadTeams();
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function viewTeamDetails(teamId) {
+    const team = db.getTeamById(teamId);
+    if (!team) return;
+
+    const captainName = app.getUserName(team.captainId);
+    const memberNames = team.members.map(id => app.getUserName(id));
+
+    let detailsHTML = `
+        <div style="margin-bottom: 15px;">
+            <p><strong>Nombre:</strong> ${team.name}</p>
+            <p><strong>Descripción:</strong> ${team.description}</p>
+            <p><strong>Capitán:</strong> ${captainName}</p>
+            <p><strong>Miembros:</strong> ${team.members.length}</p>
+            <p><strong>Fecha de Registro:</strong> ${app.formatDate(team.registeredDate)}</p>
+        </div>
+        <div>
+            <h4 style="margin-bottom: 10px; color: #38bdf8;">Miembros del Equipo:</h4>
+            <ul style="list-style: none; padding: 0;">
+                ${memberNames.map((name, index) => `
+                    <li style="padding: 8px; background: #334155; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>• ${name}</span>
+                        ${app.currentUser.id === team.captainId || app.isAdmin() ? `
+                            <button class="btn btn-danger" style="padding: 3px 8px; font-size: 12px;" onclick="removeMember(${teamId}, ${team.members[index]})">Remover</button>
+                        ` : ''}
+                    </li>
+                `).join('')}
+            </ul>
+        </div>
+        ${app.currentUser.id === team.captainId || app.isAdmin() ? `
+            <div style="margin-top: 15px;">
+                <h4 style="margin-bottom: 10px; color: #38bdf8;">Agregar Miembro:</h4>
+                <select id="userSelect" style="margin-bottom: 10px;">
+                    <option value="">Selecciona un usuario</option>
+                    ${db.getAllUsers().map(user => `
+                        <option value="${user.id}" ${team.members.includes(user.id) ? 'disabled' : ''}>
+                            ${user.name} ${team.members.includes(user.id) ? '(ya está en el equipo)' : ''}
+                        </option>
+                    `).join('')}
+                </select>
+                <button class="btn btn-primary" onclick="addMember(${teamId})">Agregar Miembro</button>
+            </div>
+        ` : ''}
+    `;
+
+    document.getElementById('teamDetailsContent').innerHTML = detailsHTML;
+    document.getElementById('teamDetailsTitle').textContent = team.name;
+    app.showModal('teamDetailsModal');
+}
+
+function addMember(teamId) {
+    const userId = parseInt(document.getElementById('userSelect').value);
+    if (!userId) {
+        app.showAlert('Selecciona un usuario', 'danger');
+        return;
+    }
+
+    const result = db.addMemberToTeam(teamId, userId);
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        viewTeamDetails(teamId);
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function removeMember(teamId, userId) {
+    if (!confirm('¿Deseas remover a este miembro del equipo?')) return;
+
+    const result = db.removeMemberFromTeam(teamId, userId);
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        viewTeamDetails(teamId);
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function filterTeams() {
+    const searchValue = document.getElementById('searchTeam').value.toLowerCase();
+    const rows = document.querySelectorAll('#teamsTable tr');
+
+    rows.forEach((row, index) => {
+        if (index === 0) return;
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(searchValue) ? '' : 'none';
+    });
+}
+</script>
+</body>
+</html>

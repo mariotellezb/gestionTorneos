@@ -1,14 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Torneos</title>
-  </head>
-  <body>
-    <h1>Gestión de Torneos</h1>
-    <p>Bienvenido a la aplicación de gestión de torneos.</p>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="auth-page">
 
+<div class="container">
+    <h2>🏆 Gestión de Torneos</h2>
+    <p style="margin-bottom: 30px; color: #cbd5e1;">
+        Bienvenido a la plataforma de gestión de torneos. Por favor, inicia sesión para continuar.
+    </p>
     
-  </body>
+    <div style="margin-bottom: 20px;">
+        <button class="btn btn-primary" onclick="window.location.href='login.html'" style="width: 100%;">Iniciar Sesión</button>
+    </div>
+    
+    <div style="margin-bottom: 30px;">
+        <button class="btn btn-secondary" onclick="window.location.href='signin.html'" style="width: 100%;">Registrarse</button>
+    </div>
+
+    <div style="background: #334155; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #38bdf8;">
+        <p style="font-weight: bold; margin-bottom: 10px; color: #38bdf8;">📋 Credenciales de Prueba:</p>
+        <p style="font-size: 13px; margin: 5px 0;"><strong>Admin:</strong> admin@torneos.com / admin123</p>
+        <p style="font-size: 13px; margin: 5px 0;"><strong>Organizador:</strong> juan@torneos.com / pass123</p>
+    </div>
+</div>
+
+</body>
 </html>

@@ -2,25 +2,35 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Registro - Torneos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Gestión de Torneos</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="auth-page">
+
+<div id="alert" class="alert"></div>
 
 <div class="container">
     <h2>Crear Cuenta</h2>
 
     <form id="signupForm">
-        <input type="text" id="name" placeholder="Nombre completo" required>
-        <input type="email" id="email" placeholder="Correo" required>
-        <input type="password" id="password" placeholder="Contraseña" required>
+        <div class="form-group">
+            <input type="text" id="name" placeholder="Nombre completo" required>
+        </div>
+        <div class="form-group">
+            <input type="email" id="email" placeholder="Correo institucional" required>
+        </div>
+        <div class="form-group">
+            <input type="password" id="password" placeholder="Contraseña" required>
+        </div>
 
         <button type="submit">Registrarse</button>
     </form>
 
-    <p>¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a></p>
+    <p>¿Ya tienes cuenta? <a href="login.html">Inicia sesión aquí</a></p>
 </div>
 
+<script src="js/db.js"></script>
 <script src="js/auth.js"></script>
 </body>
 </html>

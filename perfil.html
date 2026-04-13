@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>🏆 Torneos</h3>
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Mi Perfil</h1>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- INFORMACIÓN DEL PERFIL -->
+            <div class="card">
+                <h3>Información Personal</h3>
+                <form id="profileForm">
+                    <div class="form-group">
+                        <label>Nombre Completo</label>
+                        <input type="text" id="profileName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Correo Institucional</label>
+                        <input type="email" id="profileEmail" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Rol</label>
+                        <input type="text" id="profileRole" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Registro</label>
+                        <input type="text" id="profileCreatedAt" disabled>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Actualizar Perfil</button>
+                </form>
+            </div>
+
+            <!-- CAMBIAR CONTRASEÑA -->
+            <div class="card">
+                <h3>Cambiar Contraseña</h3>
+                <form id="passwordForm">
+                    <div class="form-group">
+                        <label>Contraseña Actual</label>
+                        <input type="password" id="currentPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Nueva Contraseña</label>
+                        <input type="password" id="newPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirmar Nueva Contraseña</label>
+                        <input type="password" id="confirmPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                </form>
+            </div>
+
+            <!-- EQUIPOS DEL USUARIO -->
+            <div class="card">
+                <h3>Mis Equipos</h3>
+                <div id="userTeamsContainer">
+                    <p style="color: #cbd5e1;">Cargando equipos...</p>
+                </div>
+            </div>
+
+            <!-- TORNEOS EN LOS QUE PARTICIPA -->
+            <div class="card">
+                <h3>Torneos en los que Participas</h3>
+                <div id="userTournamentsContainer">
+                    <p style="color: #cbd5e1;">Cargando torneos...</p>
+                </div>
+            </div>
+
+            <!-- PARTIDOS DEL USUARIO -->
+            <div class="card">
+                <h3>Tus Próximos Partidos</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Torneo</th>
+                            <th>Equipo Local</th>
+                            <th>Equipo Visitante</th>
+                            <th>Fecha y Hora</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userMatchesTable">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #cbd5e1;">Cargando partidos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    app.checkAuth();
+    
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+
+        loadProfileData(currentUser);
+        loadUserTeams(currentUser.id);
+        loadUserTournaments(currentUser.id);
+        loadUserMatches(currentUser.id);
+    }
+
+    app.initializeNavigation();
+
+    document.getElementById('profileForm').addEventListener('submit', updateProfile);
+    document.getElementById('passwordForm').addEventListener('submit', changePassword);
+});
+
+function loadProfileData(user) {
+    document.getElementById('profileName').value = user.name;
+    document.getElementById('profileEmail').value = user.email;
+    document.getElementById('profileRole').value = translateRole(user.role);
+    document.getElementById('profileCreatedAt').value = app.formatDate(user.createdAt);
+}
+
+function translateRole(role) {
+    const roles = {
+        'administrador': 'Administrador',
+        'organizador': 'Organizador',
+        'capitan': 'Capitán',
+        'usuario': 'Usuario / Espectador'
+    };
+    return roles[role] || role;
+}
+
+function updateProfile(e) {
+    e.preventDefault();
+
+    const newName = document.getElementById('profileName').value.trim();
+    
+    if (!newName) {
+        app.showAlert('El nombre es requerido', 'danger');
+        return;
+    }
+
+    const currentUser = db.getCurrentUser();
+    const result = db.updateUser(currentUser.id, { name: newName });
+
+    if (result.success) {
+        app.showAlert('Perfil actualizado exitosamente', 'success');
+        document.getElementById('userName').textContent = newName;
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function changePassword(e) {
+    e.preventDefault();
+
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    const currentUser = db.getCurrentUser();
+
+    if (currentPassword !== currentUser.password) {
+        app.showAlert('La contraseña actual es incorrecta', 'danger');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        app.showAlert('La nueva contraseña debe tener al menos 6 caracteres', 'danger');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        app.showAlert('Las contraseñas no coinciden', 'danger');
+        return;
+    }
+
+    const result = db.updateUser(currentUser.id, { password: newPassword });
+
+    if (result.success) {
+        app.showAlert('Contraseña cambiada exitosamente', 'success');
+        document.getElementById('passwordForm').reset();
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function loadUserTeams(userId) {
+    const teams = db.getAllTeams().filter(t => t.captainId === userId || t.members.includes(userId));
+    const container = document.getElementById('userTeamsContainer');
+
+    if (teams.length === 0) {
+        container.innerHTML = '<p style="color: #cbd5e1;">No estás en ningún equipo</p>';
+        return;
+    }
+
+    let html = '<table style="width: 100%;"><thead><tr><th>Nombre</th><th>Rol</th><th>Miembros</th></tr></thead><tbody>';
+    
+    teams.forEach(team => {
+        const role = team.captainId === userId ? 'Capitán' : 'Jugador';
+        html += `
+            <tr>
+                <td>${team.name}</td>
+                <td>${role}</td>
+                <td>${team.members.length}</td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function loadUserTournaments(userId) {
+    const userTeams = db.getAllTeams().filter(t => t.captainId === userId || t.members.includes(userId));
+    const userTeamIds = userTeams.map(t => t.id);
+    
+    const tournaments = db.getAllTournaments().filter(t => 
+        t.teams && t.teams.some(teamId => userTeamIds.includes(teamId))
+    );
+
+    const container = document.getElementById('userTournamentsContainer');
+
+    if (tournaments.length === 0) {
+        container.innerHTML = '<p style="color: #cbd5e1;">No participas en ningún torneo</p>';
+        return;
+    }
+
+    let html = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">';
+    
+    tournaments.forEach(tournament => {
+        html += `
+            <div class="card-item">
+                <h4>${tournament.name}</h4>
+                <p><strong>Deporte:</strong> ${tournament.sport}</p>
+                <p><strong>Inicio:</strong> ${app.formatDate(tournament.startDate)}</p>
+                <p><strong>Fin:</strong> ${app.formatDate(tournament.endDate)}</p>
+                <p><strong>Estado:</strong> <span style="color: #10b981;">${tournament.status}</span></p>
+                <p><strong>Equipos:</strong> ${tournament.teams.length}/${tournament.maxTeams}</p>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function loadUserMatches(userId) {
+    const userTeams = db.getAllTeams().filter(t => t.captainId === userId || t.members.includes(userId));
+    const userTeamIds = userTeams.map(t => t.id);
+
+    const matches = db.getAllMatches()
+        .filter(m => m.status === 'scheduled' && (userTeamIds.includes(m.homeTeamId) || userTeamIds.includes(m.awayTeamId)))
+        .sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time))
+        .slice(0, 10);
+
+    const tbody = document.getElementById('userMatchesTable');
+    tbody.innerHTML = '';
+
+    if (matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #cbd5e1;">No hay partidos programados para tus equipos</td></tr>';
+        return;
+    }
+
+    matches.forEach(match => {
+        const tournament = db.getTournamentById(match.tournamentId);
+        const homeTeam = db.getTeamById(match.homeTeamId);
+        const awayTeam = db.getTeamById(match.awayTeamId);
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${tournament ? tournament.name : 'Torneo desconocido'}</td>
+            <td>${homeTeam ? homeTeam.name : 'Equipo desconocido'}</td>
+            <td>${awayTeam ? awayTeam.name : 'Equipo desconocido'}</td>
+            <td>${app.formatDate(match.date)} ${match.time}</td>
+            <td><span style="color: #f59e0b;">${match.status}</span></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+</script>
+</body>
+</html>

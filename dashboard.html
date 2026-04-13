@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>🏆 Torneos</h3>
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Dashboard</h1>
+            <p id="welcomeMessage"></p>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- BIENVENIDA -->
+            <div class="card">
+                <h3>¡Bienvenido a la Plataforma de Gestión de Torneos!</h3>
+                <p>Aquí puedes administrar torneos, equipos, calendario y resultados de todas las competiciones.</p>
+            </div>
+
+            <!-- ESTADÍSTICAS RÁPIDAS -->
+            <div class="card-grid" id="statsGrid">
+                <div class="card-item">
+                    <h4>Torneos Activos</h4>
+                    <p style="font-size: 28px; color: #38bdf8; font-weight: bold;" id="activeTournaments">0</p>
+                </div>
+                <div class="card-item">
+                    <h4>Equipos Registrados</h4>
+                    <p style="font-size: 28px; color: #10b981; font-weight: bold;" id="totalTeams">0</p>
+                </div>
+                <div class="card-item">
+                    <h4>Partidos Programados</h4>
+                    <p style="font-size: 28px; color: #f59e0b; font-weight: bold;" id="totalMatches">0</p>
+                </div>
+                <div class="card-item">
+                    <h4>Usuarios Registrados</h4>
+                    <p style="font-size: 28px; color: #8b5cf6; font-weight: bold;" id="totalUsers">0</p>
+                </div>
+            </div>
+
+            <!-- TORNEOS RECIENTES -->
+            <div class="card">
+                <h3>Torneos Recientes</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Deporte</th>
+                            <th>Inicio</th>
+                            <th>Fin</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentTournamentsTable">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #cbd5e1;">Cargando torneos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- PARTIDOS PRÓXIMOS -->
+            <div class="card">
+                <h3>Próximos Partidos</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Torneo</th>
+                            <th>Equipo Local</th>
+                            <th>Equipo Visitante</th>
+                            <th>Fecha y Hora</th>
+                            <th>Ubicación</th>
+                        </tr>
+                    </thead>
+                    <tbody id="upcomingMatchesTable">
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #cbd5e1;">Cargando partidos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Check authentication
+    app.checkAuth();
+
+    // Update user info
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+        document.getElementById('welcomeMessage').textContent = `¡Hola, ${currentUser.name.split(' ')[0]}!`;
+
+        // Show admin link if user is admin
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+    }
+
+    // Load statistics
+    loadStatistics();
+    loadRecentTournaments();
+    loadUpcomingMatches();
+
+    // Update navigation
+    app.initializeNavigation();
+});
+
+function loadStatistics() {
+    const tournaments = db.getAllTournaments();
+    const teams = db.getAllTeams();
+    const matches = db.getAllMatches();
+    const users = db.getAllUsers();
+
+    const activeTournaments = tournaments.filter(t => t.status === 'active').length;
+
+    document.getElementById('activeTournaments').textContent = activeTournaments;
+    document.getElementById('totalTeams').textContent = teams.length;
+    document.getElementById('totalMatches').textContent = matches.length;
+    document.getElementById('totalUsers').textContent = users.length;
+}
+
+function loadRecentTournaments() {
+    const tournaments = db.getAllTournaments();
+    const tbody = document.getElementById('recentTournamentsTable');
+    tbody.innerHTML = '';
+
+    if (tournaments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #cbd5e1;">No hay torneos registrados</td></tr>';
+        return;
+    }
+
+    tournaments.slice(0, 5).forEach(tournament => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${tournament.name}</td>
+            <td>${tournament.sport}</td>
+            <td>${app.formatDate(tournament.startDate)}</td>
+            <td>${app.formatDate(tournament.endDate)}</td>
+            <td><span style="color: #10b981; font-weight: bold;">${tournament.status}</span></td>
+            <td>
+                <button class="btn btn-secondary" onclick="window.location.href='torneos.html'">Ver Detalles</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function loadUpcomingMatches() {
+    const matches = db.getAllMatches().filter(m => m.status === 'scheduled').sort((a, b) => 
+        new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time)
+    );
+
+    const tbody = document.getElementById('upcomingMatchesTable');
+    tbody.innerHTML = '';
+
+    if (matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #cbd5e1;">No hay partidos programados</td></tr>';
+        return;
+    }
+
+    matches.slice(0, 5).forEach(match => {
+        const tournament = db.getTournamentById(match.tournamentId);
+        const homeTeam = db.getTeamById(match.homeTeamId);
+        const awayTeam = db.getTeamById(match.awayTeamId);
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${tournament ? tournament.name : 'Torneo desconocido'}</td>
+            <td>${homeTeam ? homeTeam.name : 'Equipo desconocido'}</td>
+            <td>${awayTeam ? awayTeam.name : 'Equipo desconocido'}</td>
+            <td>${app.formatDate(match.date)} ${match.time}</td>
+            <td>${match.location}</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h3>🏆 Torneos</h3>
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Resultados de Partidos</h1>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- FILTROS -->
+            <div class="card">
+                <form id="filterForm">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div class="form-group">
+                            <label>Filtrar por Torneo</label>
+                            <select id="filterTournament" onchange="filterResults()">
+                                <option value="">Todos los torneos</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Filtrar por Equipo</label>
+                            <select id="filterTeam" onchange="filterResults()">
+                                <option value="">Todos los equipos</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TABLA DE RESULTADOS -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Torneo</th>
+                        <th>Equipo Local</th>
+                        <th>Resultado</th>
+                        <th>Equipo Visitante</th>
+                        <th>Fecha</th>
+                        <th>Ubicación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsTable">
+                    <tr>
+                        <td colspan="7" style="text-align: center; color: #cbd5e1;">Cargando resultados...</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- TABLA DE POSICIONES POR TORNEO -->
+            <div id="standingsContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL REGISTRAR RESULTADO -->
+<div id="resultModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Registrar Resultado</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('resultModal')">&times;</button>
+        </div>
+        <div id="resultModalContent"></div>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+let allMatches = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    app.checkAuth();
+    
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+    }
+
+    loadTournaments();
+    loadTeams();
+    loadResults();
+    loadStandings();
+    app.initializeNavigation();
+});
+
+function loadTournaments() {
+    const tournaments = db.getAllTournaments();
+    const select = document.getElementById('filterTournament');
+
+    tournaments.forEach(tournament => {
+        const option = document.createElement('option');
+        option.value = tournament.id;
+        option.textContent = tournament.name;
+        select.appendChild(option);
+    });
+}
+
+function loadTeams() {
+    const teams = db.getAllTeams();
+    const select = document.getElementById('filterTeam');
+
+    teams.forEach(team => {
+        const option = document.createElement('option');
+        option.value = team.id;
+        option.textContent = team.name;
+        select.appendChild(option);
+    });
+}
+
+function loadResults() {
+    allMatches = db.getAllMatches().filter(m => m.status === 'played' || (m.homeScore !== null && m.awayScore !== null));
+    displayResults(allMatches);
+}
+
+function displayResults(matches) {
+    const tbody = document.getElementById('resultsTable');
+    tbody.innerHTML = '';
+
+    if (matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #cbd5e1;">No hay resultados registrados</td></tr>';
+        return;
+    }
+
+    matches.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(match => {
+        const tournament = db.getTournamentById(match.tournamentId);
+        const homeTeam = db.getTeamById(match.homeTeamId);
+        const awayTeam = db.getTeamById(match.awayTeamId);
+
+        const row = document.createElement('tr');
+        const resultText = match.homeScore !== null && match.awayScore !== null 
+            ? `${match.homeScore} - ${match.awayScore}` 
+            : 'Pendiente';
+
+        row.innerHTML = `
+            <td>${tournament ? tournament.name : 'Torneo desconocido'}</td>
+            <td>${homeTeam ? homeTeam.name : 'Equipo desconocido'}</td>
+            <td style="font-weight: bold; font-size: 16px;">${resultText}</td>
+            <td>${awayTeam ? awayTeam.name : 'Equipo desconocido'}</td>
+            <td>${app.formatDate(match.date)}</td>
+            <td>${match.location}</td>
+            <td>
+                ${app.isOrganizer() && (match.homeScore === null || match.awayScore === null) ? `
+                    <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="editResult(${match.id})">Registrar</button>
+                ` : ''}
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function editResult(matchId) {
+    const match = db.getAllMatches().find(m => m.id === matchId);
+    if (!match) return;
+
+    const tournament = db.getTournamentById(match.tournamentId);
+    const homeTeam = db.getTeamById(match.homeTeamId);
+    const awayTeam = db.getTeamById(match.awayTeamId);
+
+    let modalHTML = `
+        <form onsubmit="saveResult(event, ${matchId})">
+            <div style="margin-bottom: 20px; text-align: center;">
+                <h3 style="color: #38bdf8; margin-bottom: 10px;">${homeTeam.name} vs ${awayTeam.name}</h3>
+                <p style="color: #cbd5e1; font-size: 14px;">${tournament.name}</p>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>${homeTeam.name}</label>
+                    <input type="number" id="homeScore" min="0" value="${match.homeScore || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>${awayTeam.name}</label>
+                    <input type="number" id="awayScore" min="0" value="${match.awayScore || ''}" required>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Guardar Resultado</button>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('resultModal')">Cancelar</button>
+            </div>
+        </form>
+    `;
+
+    document.getElementById('resultModalContent').innerHTML = modalHTML;
+    app.showModal('resultModal');
+}
+
+function saveResult(e, matchId) {
+    e.preventDefault();
+
+    const homeScore = parseInt(document.getElementById('homeScore').value);
+    const awayScore = parseInt(document.getElementById('awayScore').value);
+
+    const result = db.updateMatch(matchId, {
+        homeScore: homeScore,
+        awayScore: awayScore,
+        status: 'played'
+    });
+
+    if (result.success) {
+        app.showAlert('Resultado guardado exitosamente', 'success');
+        app.closeModal('resultModal');
+        loadResults();
+        loadStandings();
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
+}
+
+function loadStandings() {
+    const tournaments = db.getAllTournaments();
+    const container = document.getElementById('standingsContainer');
+    container.innerHTML = '';
+
+    tournaments.forEach(tournament => {
+        const standings = calculateStandings(tournament.id);
+        if (standings.length === 0) return;
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <h3>Posiciones - ${tournament.name}</h3>
+            <table style="margin-top: 15px;">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Equipo</th>
+                        <th>PJ</th>
+                        <th>G</th>
+                        <th>E</th>
+                        <th>P</th>
+                        <th>GF</th>
+                        <th>GC</th>
+                        <th>Pts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${standings.map((team, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${team.name}</td>
+                            <td>${team.played}</td>
+                            <td>${team.won}</td>
+                            <td>${team.drawn}</td>
+                            <td>${team.lost}</td>
+                            <td>${team.goalsFor}</td>
+                            <td>${team.goalsAgainst}</td>
+                            <td style="font-weight: bold; color: #38bdf8;">${team.points}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function calculateStandings(tournamentId) {
+    const tournament = db.getTournamentById(tournamentId);
+    if (!tournament || !tournament.teams) return [];
+
+    const standings = {};
+
+    // Initialize standings for each team
+    tournament.teams.forEach(teamId => {
+        const team = db.getTeamById(teamId);
+        if (team) {
+            standings[teamId] = {
+                id: teamId,
+                name: team.name,
+                played: 0,
+                won: 0,
+                drawn: 0,
+                lost: 0,
+                goalsFor: 0,
+                goalsAgainst: 0,
+                points: 0
+            };
+        }
+    });
+
+    // Calculate standings from matches
+    const matches = db.getMatchesByTournament(tournamentId)
+        .filter(m => m.homeScore !== null && m.awayScore !== null);
+
+    matches.forEach(match => {
+        if (!standings[match.homeTeamId] || !standings[match.awayTeamId]) return;
+
+        standings[match.homeTeamId].played++;
+        standings[match.awayTeamId].played++;
+
+        standings[match.homeTeamId].goalsFor += match.homeScore;
+        standings[match.homeTeamId].goalsAgainst += match.awayScore;
+
+        standings[match.awayTeamId].goalsFor += match.awayScore;
+        standings[match.awayTeamId].goalsAgainst += match.homeScore;
+
+        if (match.homeScore > match.awayScore) {
+            standings[match.homeTeamId].won++;
+            standings[match.homeTeamId].points += 3;
+            standings[match.awayTeamId].lost++;
+        } else if (match.awayScore > match.homeScore) {
+            standings[match.awayTeamId].won++;
+            standings[match.awayTeamId].points += 3;
+            standings[match.homeTeamId].lost++;
+        } else {
+            standings[match.homeTeamId].drawn++;
+            standings[match.homeTeamId].points += 1;
+            standings[match.awayTeamId].drawn++;
+            standings[match.awayTeamId].points += 1;
+        }
+    });
+
+    // Sort by points (descending) and goal difference
+    return Object.values(standings).sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
+    });
+}
+
+function filterResults() {
+    const tournamentFilter = parseInt(document.getElementById('filterTournament').value);
+    const teamFilter = parseInt(document.getElementById('filterTeam').value);
+
+    const filtered = allMatches.filter(match => {
+        const tournamentMatch = !tournamentFilter || match.tournamentId === tournamentFilter;
+        const teamMatch = !teamFilter || match.homeTeamId === teamFilter || match.awayTeamId === teamFilter;
+        return tournamentMatch && teamMatch;
+    });
+
+    displayResults(filtered);
+}
+</script>
+</body>
+</html>

@@ -2,24 +2,37 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Torneos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Gestión de Torneos</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="auth-page">
+
+<div id="alert" class="alert"></div>
 
 <div class="container">
     <h2>Iniciar Sesión</h2>
 
     <form id="loginForm">
-        <input type="email" id="email" placeholder="Correo" required>
-        <input type="password" id="password" placeholder="Contraseña" required>
+        <div class="form-group">
+            <input type="email" id="email" placeholder="Correo institucional" required>
+        </div>
+        <div class="form-group">
+            <input type="password" id="password" placeholder="Contraseña" required>
+        </div>
 
         <button type="submit">Ingresar</button>
     </form>
 
-    <p>¿No tienes cuenta? <a href="signup.html">Regístrate</a></p>
+    <p>¿No tienes cuenta? <a href="signin.html">Regístrate aquí</a></p>
+    <p style="font-size: 12px; margin-top: 20px; color: #94a3b8;">
+        Datos de prueba:<br>
+        Email: admin@torneos.com<br>
+        Contraseña: admin123
+    </p>
 </div>
 
+<script src="js/db.js"></script>
 <script src="js/auth.js"></script>
 </body>
 </html>
