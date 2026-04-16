@@ -49,7 +49,7 @@ class App {
     logout() {
         if (confirm('¿Deseas cerrar sesión?')) {
             db.logoutUser();
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         }
     }
 

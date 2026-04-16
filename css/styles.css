@@ -855,3 +855,179 @@ tbody tr:hover {
         padding: 20px;
     }
 }
+
+/* ======================== HELP PAGE ======================== */
+body.help-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.help-container {
+    flex: 1;
+    padding: 40px 20px;
+    background: #0f172a;
+}
+
+.help-header {
+    max-width: 1200px;
+    margin: 0 auto 40px;
+    text-align: center;
+    padding-bottom: 30px;
+    border-bottom: 2px solid #334155;
+}
+
+.help-header h1 {
+    font-size: 42px;
+    color: #38bdf8;
+    margin-bottom: 15px;
+}
+
+.help-header p {
+    font-size: 18px;
+    color: #cbd5e1;
+}
+
+.help-content {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* Tabs */
+.help-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #334155;
+}
+
+.tab-btn {
+    padding: 15px 25px;
+    background: none;
+    border: none;
+    color: #cbd5e1;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 3px solid transparent;
+    transform: none !important;
+}
+
+.tab-btn:hover {
+    color: #38bdf8;
+    background: none;
+    transform: none !important;
+}
+
+.tab-btn.active {
+    color: #38bdf8;
+    border-bottom-color: #38bdf8;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* FAQ Section */
+.faq-section h2 {
+    color: #38bdf8;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+
+.faq-item {
+    background: #1e293b;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #334155;
+    transition: all 0.3s ease;
+}
+
+.faq-question {
+    padding: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.faq-question:hover {
+    background: #334155;
+}
+
+.faq-icon {
+    font-size: 24px;
+    color: #38bdf8;
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
+}
+
+.faq-question h3 {
+    color: #e2e8f0;
+    font-size: 16px;
+    margin: 0;
+    flex: 1;
+}
+
+.faq-answer {
+    display: none;
+    padding: 0 20px 20px 20px;
+    border-top: 1px solid #334155;
+    color: #cbd5e1;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.faq-item.open .faq-answer {
+    display: block;
+}
+
+/* Chatbot Section */
+.chatbot-section h2 {
+    color: #38bdf8;
+    font-size: 28px;
+    margin-bottom: 30px;
+}
+
+.chatbot-section p {
+    color: #cbd5e1;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.chatbot-placeholder {
+    background: #1e293b;
+    border: 2px dashed #334155;
+    border-radius: 8px;
+    padding: 60px 20px;
+    text-align: center;
+    color: #cbd5e1;
+}
+
+.chatbot-placeholder p {
+    margin: 10px 0;
+}
+
+.chatbot-placeholder p:first-child {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
