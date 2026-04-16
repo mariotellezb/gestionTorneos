@@ -11,16 +11,11 @@ body {
     line-height: 1.6;
 }
 
-/* ======================== HOME PAGE ======================== */
-body.home-page {
-    display: flex;
-    flex-direction: column;
-}
-
+/* ======================== NAVBAR ======================== */
 .navbar {
     background: #1e293b;
     border-bottom: 1px solid #334155;
-    padding: 15px 0;
+    padding: 15px 30px;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -28,36 +23,42 @@ body.home-page {
 }
 
 .navbar-container {
-    max-width: 1200px;
+    max-width: 1400px;
     margin: 0 auto;
-    padding: 0 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 40px;
 }
 
 .navbar-logo {
-    padding: 0 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
 }
 
 .logo-img {
-    max-width: 60px;
+    width: 150px;
     height: auto;
+    display: block;
 }
 
 .navbar-menu {
     display: flex;
-    gap: 30px;
+    gap: 35px;
     flex: 1;
-    margin-left: 50px;
+    justify-content: flex-start;
+    align-items: center;
 }
 
 .nav-link {
     color: #cbd5e1;
     text-decoration: none;
     font-weight: 500;
+    font-size: 15px;
     transition: color 0.3s ease;
-    padding: 8px 12px;
+    white-space: nowrap;
+    padding: 5px 0;
 }
 
 .nav-link:hover {
@@ -66,15 +67,19 @@ body.home-page {
 
 .navbar-buttons {
     display: flex;
-    gap: 15px;
+    gap: 12px;
+    flex-shrink: 0;
+    align-items: center;
 }
 
 .navbar-buttons .btn {
     padding: 10px 20px;
     font-size: 13px;
+    white-space: nowrap;
+    border: none;
 }
 
-/* Intro Section */
+/* ======================== HOME PAGE ======================== */
 .intro-section {
     padding: 80px 20px;
     background: #0f172a;
@@ -204,14 +209,42 @@ body.home-page {
 /* ======================== LOGIN/SIGNUP PAGES ======================== */
 body.auth-page {
     display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Navbar Auth */
+.navbar-auth {
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    padding: 20px 30px;
+    display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-auth-logo {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+.logo-auth-img {
+    max-width: 140px;
+    height: auto;
+    display: block;
+}
+
+/* Main Container */
+body.auth-page > .alert {
+    margin: 0;
 }
 
 .container {
+    margin: auto;
+    padding: 40px 20px;
     background: #1e293b;
-    padding: 40px;
     border-radius: 12px;
     width: 100%;
     max-width: 400px;
@@ -241,6 +274,49 @@ body.auth-page {
 .welcome-text {
     margin-bottom: 30px;
     color: #cbd5e1;
+}
+
+/* Footer */
+.footer {
+    background: #1e293b;
+    border-top: 1px solid #334155;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: auto;
+}
+
+.footer-content {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.footer-link {
+    color: #38bdf8;
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.3s ease;
+    white-space: nowrap;
+}
+
+.footer-link:hover {
+    color: #0ea5e9;
+    text-decoration: underline;
+}
+
+.footer-separator {
+    color: #cbd5e1;
+    font-size: 13px;
+}
+
+.footer-text {
+    color: #cbd5e1;
+    font-size: 13px;
+    white-space: nowrap;
 }
 
 .button-container {
