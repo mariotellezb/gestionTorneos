@@ -586,6 +586,11 @@ button:active,
     background: #dc2626;
 }
 
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
+}
+
 .btn-warning {
     background: #f59e0b;
 }
@@ -716,7 +721,7 @@ tbody tr:hover {
     padding: 30px;
     border-radius: 10px;
     width: 100%;
-    max-width: 500px;
+    max-width: 750px;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
@@ -745,6 +750,33 @@ tbody tr:hover {
 
 .modal-close:hover {
     color: #ef4444;
+}
+
+.form-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    margin-bottom: 20px;
+}
+
+.form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.form-group {
+    padding: 0;
+}
+
+.form-group label {
+    padding-bottom: 5px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 8px 10px;
 }
 
 /* ======================== ALERTS ======================== */
@@ -853,6 +885,25 @@ tbody tr:hover {
 
     .container {
         padding: 20px;
+    }
+}
+
+/* ======================== PROFILE PAGE ======================== */
+.profile-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+}
+
+.profile-column {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@media (max-width: 1024px) {
+    .profile-columns {
+        grid-template-columns: 1fr;
     }
 }
 

@@ -12,7 +12,7 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h3>🏆 Torneos</h3>
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
         </div>
         <nav>
             <ul class="sidebar-nav">
@@ -42,85 +42,93 @@
         <div class="content">
             <div id="alert" class="alert"></div>
 
-            <!-- INFORMACIÓN DEL PERFIL -->
-            <div class="card">
-                <h3>Información Personal</h3>
-                <form id="profileForm">
-                    <div class="form-group">
-                        <label>Nombre Completo</label>
-                        <input type="text" id="profileName" required>
+            <div class="profile-columns">
+                <!-- COLUMNA IZQUIERDA -->
+                <div class="profile-column">
+                    <!-- INFORMACIÓN DEL PERFIL -->
+                    <div class="card">
+                        <h3>Información Personal</h3>
+                        <form id="profileForm">
+                            <div class="form-group">
+                                <label>Nombre Completo</label>
+                                <input type="text" id="profileName" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Correo Institucional</label>
+                                <input type="email" id="profileEmail" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Rol</label>
+                                <input type="text" id="profileRole" disabled>
+                            </div>
+                            <div class="form-group">
+                                <label>Fecha de Registro</label>
+                                <input type="text" id="profileCreatedAt" disabled>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Actualizar Perfil</button>
+                        </form>
                     </div>
-                    <div class="form-group">
-                        <label>Correo Institucional</label>
-                        <input type="email" id="profileEmail" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label>Rol</label>
-                        <input type="text" id="profileRole" disabled>
-                    </div>
-                    <div class="form-group">
-                        <label>Fecha de Registro</label>
-                        <input type="text" id="profileCreatedAt" disabled>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Actualizar Perfil</button>
-                </form>
-            </div>
 
-            <!-- CAMBIAR CONTRASEÑA -->
-            <div class="card">
-                <h3>Cambiar Contraseña</h3>
-                <form id="passwordForm">
-                    <div class="form-group">
-                        <label>Contraseña Actual</label>
-                        <input type="password" id="currentPassword" required>
+                    <!-- CAMBIAR CONTRASEÑA -->
+                    <div class="card">
+                        <h3>Cambiar Contraseña</h3>
+                        <form id="passwordForm">
+                            <div class="form-group">
+                                <label>Contraseña Actual</label>
+                                <input type="password" id="currentPassword" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Nueva Contraseña</label>
+                                <input type="password" id="newPassword" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Confirmar Nueva Contraseña</label>
+                                <input type="password" id="confirmPassword" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
+                        </form>
                     </div>
-                    <div class="form-group">
-                        <label>Nueva Contraseña</label>
-                        <input type="password" id="newPassword" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Confirmar Nueva Contraseña</label>
-                        <input type="password" id="confirmPassword" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Cambiar Contraseña</button>
-                </form>
-            </div>
-
-            <!-- EQUIPOS DEL USUARIO -->
-            <div class="card">
-                <h3>Mis Equipos</h3>
-                <div id="userTeamsContainer">
-                    <p style="color: #cbd5e1;">Cargando equipos...</p>
                 </div>
-            </div>
 
-            <!-- TORNEOS EN LOS QUE PARTICIPA -->
-            <div class="card">
-                <h3>Torneos en los que Participas</h3>
-                <div id="userTournamentsContainer">
-                    <p style="color: #cbd5e1;">Cargando torneos...</p>
+                <!-- COLUMNA DERECHA -->
+                <div class="profile-column">
+                    <!-- EQUIPOS DEL USUARIO -->
+                    <div class="card">
+                        <h3>Mis Equipos</h3>
+                        <div id="userTeamsContainer">
+                            <p style="color: #cbd5e1;">Cargando equipos...</p>
+                        </div>
+                    </div>
+
+                    <!-- TORNEOS EN LOS QUE PARTICIPA -->
+                    <div class="card">
+                        <h3>Torneos en los que Participas</h3>
+                        <div id="userTournamentsContainer">
+                            <p style="color: #cbd5e1;">Cargando torneos...</p>
+                        </div>
+                    </div>
+
+                    <!-- PARTIDOS DEL USUARIO -->
+                    <div class="card">
+                        <h3>Tus Próximos Partidos</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Torneo</th>
+                                    <th>Equipo Local</th>
+                                    <th>Equipo Visitante</th>
+                                    <th>Fecha y Hora</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userMatchesTable">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; color: #cbd5e1;">Cargando partidos...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
-
-            <!-- PARTIDOS DEL USUARIO -->
-            <div class="card">
-                <h3>Tus Próximos Partidos</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Torneo</th>
-                            <th>Equipo Local</th>
-                            <th>Equipo Visitante</th>
-                            <th>Fecha y Hora</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="userMatchesTable">
-                        <tr>
-                            <td colspan="5" style="text-align: center; color: #cbd5e1;">Cargando partidos...</td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>

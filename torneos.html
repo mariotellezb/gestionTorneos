@@ -12,7 +12,7 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h3>🏆 Torneos</h3>
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
         </div>
         <nav>
             <ul class="sidebar-nav">
@@ -37,7 +37,7 @@
     <div class="main-content">
         <div class="header">
             <h1>Gestión de Torneos</h1>
-            <button id="createTournamentBtn" class="btn btn-success" style="display:none;">+ Crear Torneo</button>
+            <button id="createTournamentBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Torneo</button>
         </div>
 
         <div class="content">
@@ -87,41 +87,47 @@
             <button type="button" class="modal-close" onclick="app.closeModal('tournamentModal')">&times;</button>
         </div>
         <form id="tournamentForm">
-            <div class="form-group">
-                <label>Nombre del Torneo</label>
-                <input type="text" id="tournamentName" required>
-            </div>
-            <div class="form-group">
-                <label>Descripción</label>
-                <textarea id="tournamentDescription" required></textarea>
-            </div>
-            <div class="form-group">
-                <label>Deporte</label>
-                <select id="tournamentSport" required>
-                    <option value="">Selecciona un deporte</option>
-                    <option value="Futbol">Futbol</option>
-                    <option value="Baloncesto">Baloncesto</option>
-                    <option value="Voleibol">Voleibol</option>
-                    <option value="Tenis">Tenis</option>
-                    <option value="Badminton">Badminton</option>
-                    <option value="Otros">Otros</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Fecha de Inicio</label>
-                <input type="date" id="tournamentStartDate" required>
-            </div>
-            <div class="form-group">
-                <label>Fecha de Fin</label>
-                <input type="date" id="tournamentEndDate" required>
-            </div>
-            <div class="form-group">
-                <label>Ubicación</label>
-                <input type="text" id="tournamentLocation" required>
-            </div>
-            <div class="form-group">
-                <label>Equipos Máximos</label>
-                <input type="number" id="tournamentMaxTeams" value="16" required>
+            <div class="form-columns">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label>Nombre del Torneo</label>
+                        <input type="text" id="tournamentName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción</label>
+                        <textarea id="tournamentDescription" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Deporte</label>
+                        <select id="tournamentSport" required>
+                            <option value="">Selecciona un deporte</option>
+                            <option value="Futbol">Futbol</option>
+                            <option value="Baloncesto">Baloncesto</option>
+                            <option value="Voleibol">Voleibol</option>
+                            <option value="Tenis">Tenis</option>
+                            <option value="Badminton">Badminton</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Equipos Máximos</label>
+                        <input type="number" id="tournamentMaxTeams" value="16" required>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <div class="form-group">
+                        <label>Fecha de Inicio</label>
+                        <input type="date" id="tournamentStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha de Fin</label>
+                        <input type="date" id="tournamentEndDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación</label>
+                        <input type="text" id="tournamentLocation" required>
+                    </div>
+                </div>
             </div>
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">Guardar</button>

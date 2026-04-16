@@ -12,7 +12,7 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-header">
-            <h3>🏆 Torneos</h3>
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
         </div>
         <nav>
             <ul class="sidebar-nav">
@@ -37,7 +37,7 @@
     <div class="main-content">
         <div class="header">
             <h1>Calendario de Partidos</h1>
-            <button id="createMatchBtn" class="btn btn-success" style="display:none;">+ Crear Partido</button>
+            <button id="createMatchBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Partido</button>
         </div>
 
         <div class="content">
@@ -98,35 +98,41 @@
             <button type="button" class="modal-close" onclick="app.closeModal('matchModal')">&times;</button>
         </div>
         <form id="matchForm">
-            <div class="form-group">
-                <label>Torneo</label>
-                <select id="matchTournament" required onchange="loadTournamentTeams()">
-                    <option value="">Selecciona un torneo</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Equipo Local</label>
-                <select id="matchHomeTeam" required>
-                    <option value="">Selecciona un equipo</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Equipo Visitante</label>
-                <select id="matchAwayTeam" required>
-                    <option value="">Selecciona un equipo</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Fecha</label>
-                <input type="date" id="matchDate" required>
-            </div>
-            <div class="form-group">
-                <label>Hora</label>
-                <input type="time" id="matchTime" required>
-            </div>
-            <div class="form-group">
-                <label>Ubicación</label>
-                <input type="text" id="matchLocation" required>
+            <div class="form-columns">
+                <div class="form-column">
+                    <div class="form-group">
+                        <label>Torneo</label>
+                        <select id="matchTournament" required onchange="loadTournamentTeams()">
+                            <option value="">Selecciona un torneo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Equipo Local</label>
+                        <select id="matchHomeTeam" required>
+                            <option value="">Selecciona un equipo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Equipo Visitante</label>
+                        <select id="matchAwayTeam" required>
+                            <option value="">Selecciona un equipo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-column">
+                    <div class="form-group">
+                        <label>Fecha</label>
+                        <input type="date" id="matchDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Hora</label>
+                        <input type="time" id="matchTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Ubicación</label>
+                        <input type="text" id="matchLocation" required>
+                    </div>
+                </div>
             </div>
             <div class="btn-group">
                 <button type="submit" class="btn btn-primary">Guardar</button>
