@@ -3,31 +3,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Torneos</title>
+    <title>Gestión de Torneos - TROYAN LEGACY</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="auth-page">
+<body class="home-page">
 
-<div class="container">
-    <h2>🏆 Gestión de Torneos</h2>
-    <p style="margin-bottom: 30px; color: #cbd5e1;">
-        Bienvenido a la plataforma de gestión de torneos. Por favor, inicia sesión para continuar.
-    </p>
-    
-    <div style="margin-bottom: 20px;">
-        <button class="btn btn-primary" onclick="window.location.href='login.html'" style="width: 100%;">Iniciar Sesión</button>
+<!-- Barra Superior de Navegación -->
+<nav class="navbar">
+    <div class="navbar-container">
+        <div class="navbar-logo">
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="logo-img">
+        </div>
+        
+        <div class="navbar-menu">
+            <a href="#inicio" class="nav-link">Inicio</a>
+            <a href="#organizar" class="nav-link">Organizar Torneo</a>
+            <a href="#deportes" class="nav-link">Deportes</a>
+            <a href="#recursos" class="nav-link">Recursos</a>
+            <a href="#ayuda" class="nav-link">Centro de Ayuda</a>
+        </div>
+        
+        <div class="navbar-buttons">
+            <button class="btn btn-secondary" onclick="window.location.href='login.html'">Iniciar Sesión</button>
+            <button class="btn btn-primary" onclick="window.location.href='signin.html'">Registrarse</button>
+        </div>
     </div>
-    
-    <div style="margin-bottom: 30px;">
-        <button class="btn btn-secondary" onclick="window.location.href='signin.html'" style="width: 100%;">Registrarse</button>
-    </div>
+</nav>
 
-    <div style="background: #334155; padding: 20px; border-radius: 8px; margin-top: 30px; border-left: 4px solid #38bdf8;">
-        <p style="font-weight: bold; margin-bottom: 10px; color: #38bdf8;">📋 Credenciales de Prueba:</p>
-        <p style="font-size: 13px; margin: 5px 0;"><strong>Admin:</strong> admin@torneos.com / admin123</p>
-        <p style="font-size: 13px; margin: 5px 0;"><strong>Organizador:</strong> juan@torneos.com / pass123</p>
+<!-- Sección de Introducción -->
+<section class="intro-section" id="inicio">
+    <div class="intro-container">
+        <div class="intro-text">
+            <h1>Bienvenido a TROYAN LEGACY</h1>
+            <p>
+                TROYAN LEGACY es una plataforma integral de gestión de torneos diseñada para simplificar la 
+                organización, administración y seguimiento de eventos deportivos. Ya sea que organices torneos 
+                locales o competiciones a gran escala, nuestro sistema te proporciona todas las herramientas 
+                necesarias para garantizar el éxito de tu evento.
+            </p>
+        </div>
+        <div class="intro-image">
+            <img src="img/tl_letters.png" alt="Ilustración" class="intro-img">
+        </div>
     </div>
-</div>
+</section>
+
+<!-- Sección de Deportes -->
+<section class="sports-section" id="deportes">
+    <div class="section-container">
+        <h2>Deportes Disponibles</h2>
+        <div class="sports-grid">
+            <div class="sport-card">
+                <div class="sport-icon">⚽</div>
+                <h3>Fútbol</h3>
+            </div>
+            <div class="sport-card">
+                <div class="sport-icon">🏀</div>
+                <h3>Baloncesto</h3>
+            </div>
+            <div class="sport-card">
+                <div class="sport-icon">🎾</div>
+                <h3>Tenis</h3>
+            </div>
+            <div class="sport-card">
+                <div class="sport-icon">🏐</div>
+                <h3>Voleibol</h3>
+            </div>
+            <div class="sport-card">
+                <div class="sport-icon">🏐</div>
+                <h3>Beisbol</h3>
+            </div>
+            <div class="sport-card">
+                <div class="sport-icon">🥊</div>
+                <h3>Boxeo</h3>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Sección de Recursos -->
+<section class="resources-section" id="recursos">
+    <div class="section-container">
+        <h2>Nuestros Recursos</h2>
+        <div class="resources-list">
+            <div class="resource-item">
+                <h3>📊 Gestión de Equipos</h3>
+                <p>Crea y administra equipos con facilidad, gestiona participantes y realiza un seguimiento del desempeño.</p>
+            </div>
+            <div class="resource-item">
+                <h3>📅 Calendarios Automáticos</h3>
+                <p>Genera automáticamente calendarios de torneos basados en reglas personalizables y sistemas de emparejamiento.</p>
+            </div>
+            <div class="resource-item">
+                <h3>🏆 Clasificaciones en Vivo</h3>
+                <p>Mantén las clasificaciones actualizadas en tiempo real con cálculos automáticos de puntos y posiciones.</p>
+            </div>
+            <div class="resource-item">
+                <h3>📱 Acceso Multiplataforma</h3>
+                <p>Accede desde cualquier dispositivo: computadora, tablet o teléfono móvil, en cualquier momento y lugar.</p>
+            </div>
+            <div class="resource-item">
+                <h3>👥 Gestión de Usuarios</h3>
+                <p>Diferentes roles de usuario (Admin, Organizador, Participante) con permisos personalizados.</p>
+            </div>
+            <div class="resource-item">
+                <h3>📝 Reportes Detallados</h3>
+                <p>Genera reportes completos de resultados, estadísticas y datos de desempeño de tus torneos.</p>
+            </div>
+        </div>
+    </div>
+</section>
 
 </body>
 </html>

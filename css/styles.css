@@ -11,6 +11,196 @@ body {
     line-height: 1.6;
 }
 
+/* ======================== HOME PAGE ======================== */
+body.home-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.navbar {
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    padding: 15px 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.navbar-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.navbar-logo {
+    padding: 0 20px;
+}
+
+.logo-img {
+    max-width: 60px;
+    height: auto;
+}
+
+.navbar-menu {
+    display: flex;
+    gap: 30px;
+    flex: 1;
+    margin-left: 50px;
+}
+
+.nav-link {
+    color: #cbd5e1;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+    padding: 8px 12px;
+}
+
+.nav-link:hover {
+    color: #38bdf8;
+}
+
+.navbar-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.navbar-buttons .btn {
+    padding: 10px 20px;
+    font-size: 13px;
+}
+
+/* Intro Section */
+.intro-section {
+    padding: 80px 20px;
+    background: #0f172a;
+}
+
+.intro-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+}
+
+.intro-text h1 {
+    font-size: 42px;
+    color: #38bdf8;
+    margin-bottom: 20px;
+    line-height: 1.2;
+}
+
+.intro-text p {
+    font-size: 16px;
+    color: #cbd5e1;
+    line-height: 1.8;
+}
+
+.intro-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.intro-img {
+    max-width: 100%;
+    height: auto;
+    max-width: 300px;
+}
+
+/* Sports Section */
+.sports-section {
+    padding: 80px 20px;
+    background: #1e293b;
+}
+
+.section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.section-container h2 {
+    font-size: 36px;
+    color: #38bdf8;
+    margin-bottom: 50px;
+    text-align: center;
+}
+
+.sports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 30px;
+}
+
+.sport-card {
+    background: #0f172a;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    border: 2px solid #334155;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.sport-card:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
+    transform: translateY(-5px);
+}
+
+.sport-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.sport-card h3 {
+    color: #e2e8f0;
+    font-size: 18px;
+}
+
+/* Resources Section */
+.resources-section {
+    padding: 80px 20px;
+    background: #0f172a;
+}
+
+.resources-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
+}
+
+.resource-item {
+    background: #1e293b;
+    padding: 30px;
+    border-radius: 12px;
+    border-left: 4px solid #38bdf8;
+    transition: all 0.3s ease;
+}
+
+.resource-item:hover {
+    box-shadow: 0 8px 24px rgba(56, 189, 248, 0.15);
+    transform: translateY(-5px);
+}
+
+.resource-item h3 {
+    color: #38bdf8;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+.resource-item p {
+    color: #cbd5e1;
+    line-height: 1.7;
+    font-size: 14px;
+}
+
 /* ======================== LOGIN/SIGNUP PAGES ======================== */
 body.auth-page {
     display: flex;
@@ -35,10 +225,34 @@ body.auth-page {
     font-size: 24px;
 }
 
+.container-logo {
+    display: block;
+    max-width: 200px;
+    height: auto;
+    margin: 0 auto 20px auto;
+}
+
 .container p {
     text-align: center;
     margin-top: 20px;
     font-size: 14px;
+}
+
+.welcome-text {
+    margin-bottom: 30px;
+    color: #cbd5e1;
+}
+
+.button-container {
+    margin-bottom: 20px;
+}
+
+.button-container-secondary {
+    margin-bottom: 30px;
+}
+
+.btn {
+    width: 100%;
 }
 
 .container p a {
@@ -47,8 +261,27 @@ body.auth-page {
     font-weight: 600;
 }
 
-.container p a:hover {
-    text-decoration: underline;
+.btn {
+    width: 100%;
+}
+
+.credentials-box {
+    background: #334155;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 20px;
+    border-left: 4px solid #38bdf8;
+}
+
+.credentials-title {
+    font-weight: bold;
+    margin-bottom: 20px;
+    color: #38bdf8;
+}
+
+.credentials-text {
+    font-size: 13px;
+    margin: 20px 0px;
 }
 
 /* ======================== MAIN LAYOUT ======================== */
