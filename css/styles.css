@@ -388,6 +388,13 @@ body.auth-page > .alert {
     font-size: 18px;
 }
 
+.sidebar-logo {
+    max-width: 120px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+}
+
 .sidebar-nav {
     list-style: none;
     padding: 20px 0;
