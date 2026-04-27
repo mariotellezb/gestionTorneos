@@ -209,7 +209,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (currentUser) {
         document.getElementById('userName').textContent = currentUser.name;
         document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
-        document.getElementById('welcomeMessage').textContent = `¡Hola, ${currentUser.name.split(' ')[0]}!`;
         document.getElementById('userNameHeader').textContent = currentUser.name.split(' ')[0];
 
         // Show admin link if user is admin
