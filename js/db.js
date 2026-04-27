@@ -371,6 +371,207 @@ class Database {
         return matches.filter(m => m.tournamentId === tournamentId);
     }
 
+    // ======================== NOTIFICATION METHODS ========================
+    initializeNotifications() {
+        if (!localStorage.getItem('notifications')) {
+            localStorage.setItem('notifications', JSON.stringify([]));
+        }
+    }
+
+    getNotifications(userId) {
+        const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        return notifications.filter(n => n.userId === userId);
+    }
+
+    addNotification(notification) {
+        const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        const newNotification = {
+            id: Date.now(),
+            ...notification,
+            read: false,
+            createdAt: new Date().toISOString()
+        };
+        notifications.push(newNotification);
+        localStorage.setItem('notifications', JSON.stringify(notifications));
+        return { success: true, notification: newNotification };
+    }
+
+    markNotificationAsRead(notificationId) {
+        const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        const index = notifications.findIndex(n => n.id === notificationId);
+        if (index !== -1) {
+            notifications[index].read = true;
+            localStorage.setItem('notifications', JSON.stringify(notifications));
+        }
+        return { success: true };
+    }
+
+    markAllNotificationsAsRead(userId) {
+        const notifications = JSON.parse(localStorage.getItem('notifications') || '[]');
+        const updated = notifications.map(n => {
+            if (n.userId === userId) {
+                return { ...n, read: true };
+            }
+            return n;
+        });
+        localStorage.setItem('notifications', JSON.stringify(updated));
+        return { success: true };
+    }
+
+    getUnreadNotificationsCount(userId) {
+        const notifications = this.getNotifications(userId);
+        return notifications.filter(n => !n.read).length;
+    }
+
+    // ======================== TOURNAMENT REQUEST METHODS ========================
+    initializeTournamentRequests() {
+        if (!localStorage.getItem('tournamentRequests')) {
+            localStorage.setItem('tournamentRequests', JSON.stringify([]));
+        }
+    }
+
+    requestJoinTournament(tournamentId, userId, teamName) {
+        const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+        const tournament = this.getTournamentById(tournamentId);
+        
+        if (!tournament) {
+            return { success: false, message: 'Torneo no encontrado' };
+        }
+
+        // Check if already requested
+        const existingRequest = requests.find(r => r.tournamentId === tournamentId && r.userId === userId && r.status === 'pending');
+        if (existingRequest) {
+            return { success: false, message: 'Ya tienes una solicitud pendiente para este torneo' };
+        }
+
+        const newRequest = {
+            id: Date.now(),
+            tournamentId,
+            tournamentName: tournament.name,
+            userId,
+            teamName,
+            status: 'pending',
+            createdAt: new Date().toISOString()
+        };
+
+        requests.push(newRequest);
+        localStorage.setItem('tournamentRequests', JSON.stringify(requests));
+
+        // Add notification for tournament creator
+        const currentUser = this.getCurrentUser();
+        this.addNotification({
+            userId: tournament.organizerId,
+            type: 'join_request',
+            title: 'Nueva solicitud de unión',
+            message: `${currentUser.name} quiere unirse al torneo "${tournament.name}" con el equipo "${teamName}"`,
+            tournamentId,
+            requestId: newRequest.id
+        });
+
+        return { success: true, message: 'Solicitud enviada exitosamente', request: newRequest };
+    }
+
+    requestJoinTournamentWithDetails(tournamentId, userId, details) {
+        const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+        const tournament = this.getTournamentById(tournamentId);
+        const user = this.getUserById(userId);
+        
+        if (!tournament) {
+            return { success: false, message: 'Torneo no encontrado' };
+        }
+
+        if (!user) {
+            return { success: false, message: 'Usuario no encontrado' };
+        }
+
+        // Check if already requested
+        const existingRequest = requests.find(r => r.tournamentId === tournamentId && r.userId === userId && r.status === 'pending');
+        if (existingRequest) {
+            return { success: false, message: 'Ya tienes una solicitud pendiente para este torneo' };
+        }
+
+        const newRequest = {
+            id: Date.now(),
+            tournamentId,
+            tournamentName: tournament.name,
+            tournamentSport: tournament.sport,
+            userId,
+            userName: user.name,
+            userEmail: user.email,
+            teamName: details.teamName,
+            captainName: details.captainName,
+            phone: details.phone,
+            email: details.email,
+            notes: details.notes || '',
+            status: 'pending',
+            createdAt: new Date().toISOString()
+        };
+
+        requests.push(newRequest);
+        localStorage.setItem('tournamentRequests', JSON.stringify(requests));
+
+        // Add notification for tournament creator
+        this.addNotification({
+            userId: tournament.organizerId,
+            type: 'join_request',
+            title: 'Nueva solicitud de unión',
+            message: `${user.name} quiere unirse al torneo "${tournament.name}" con el equipo "${details.teamName}"`,
+            tournamentId,
+            requestId: newRequest.id
+        });
+
+        return { success: true, message: 'Solicitud enviada exitosamente', request: newRequest };
+    }
+
+    getTournamentRequests(tournamentId) {
+        const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+        return requests.filter(r => r.tournamentId === tournamentId);
+    }
+
+    getUserJoinRequests(userId) {
+        const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+        return requests.filter(r => r.userId === userId);
+    }
+
+    respondToTournamentRequest(requestId, accepted) {
+        const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+        const requestIndex = requests.findIndex(r => r.id === requestId);
+
+        if (requestIndex === -1) {
+            return { success: false, message: 'Solicitud no encontrada' };
+        }
+
+        const request = requests[requestIndex];
+        request.status = accepted ? 'accepted' : 'rejected';
+        request.respondedAt = new Date().toISOString();
+
+        requests[requestIndex] = request;
+        localStorage.setItem('tournamentRequests', JSON.stringify(requests));
+
+        // Add notification for the user who requested
+        const tournament = this.getTournamentById(request.tournamentId);
+        const currentUser = this.getCurrentUser();
+        
+        this.addNotification({
+            userId: request.userId,
+            type: accepted ? 'request_accepted' : 'request_rejected',
+            title: accepted ? 'Solicitud aceptada' : 'Solicitud rechazada',
+            message: accepted 
+                ? `Tu solicitud para unirte al torneo "${tournament.name}" ha sido aceptada`
+                : `Tu solicitud para unirte al torneo "${tournament.name}" ha sido rechazada`,
+            tournamentId: request.tournamentId
+        });
+
+        // If accepted, add team to tournament
+        if (accepted && tournament) {
+            const teams = tournament.teams || [];
+            teams.push(request.teamName);
+            this.updateTournament(tournament.id, { teams });
+        }
+
+        return { success: true, message: accepted ? 'Solicitud aceptada' : 'Solicitud rechazada' };
+    }
+
     // ======================== UTILITY METHODS ========================
     clearAllData() {
         localStorage.clear();

@@ -37,7 +37,12 @@
     <div class="main-content">
         <div class="header">
             <h1>Gestión de Torneos</h1>
-            <button id="createTournamentBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Torneo</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="viewRequestsBtn" class="btn btn-secondary btn-sm" style="display:none;" onclick="viewTournamentRequests()">
+                    📋 Solicitudes
+                </button>
+                <button id="createTournamentBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Torneo</button>
+            </div>
         </div>
 
         <div class="content">
@@ -148,6 +153,19 @@
     </div>
 </div>
 
+<!-- MODAL SOLICITUDES DE UNIÓN -->
+<div id="requestsModal" class="modal">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2>Solicitudes de Unión</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('requestsModal')">&times;</button>
+        </div>
+        <div id="requestsContent">
+            <p style="text-align: center; color: #64748b;">Cargando solicitudes...</p>
+        </div>
+    </div>
+</div>
+
 <script src="js/db.js"></script>
 <script src="js/app.js"></script>
 <script>
@@ -165,8 +183,10 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('adminLink').style.display = 'block';
         }
 
-        if (app.isOrganizer()) {
+        if (app.isOrganizer() || app.canCreateTournament()) {
             document.getElementById('createTournamentBtn').style.display = 'inline-block';
+            // Show requests button for tournament creators
+            document.getElementById('viewRequestsBtn').style.display = 'inline-block';
         }
     }
 
@@ -327,6 +347,62 @@ function filterTournaments() {
         const text = row.textContent.toLowerCase();
         row.style.display = text.includes(searchValue) ? '' : 'none';
     });
+}
+
+function viewTournamentRequests() {
+    const currentUser = db.getCurrentUser();
+    if (!currentUser) return;
+
+    // Get all tournaments created by this user
+    const myTournaments = db.getTournamentsByOrganizer(currentUser.id);
+    const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+    
+    // Filter requests for user's tournaments
+    const myRequests = requests.filter(r => 
+        myTournaments.some(t => t.id === r.tournamentId) && r.status === 'pending'
+    );
+
+    const content = document.getElementById('requestsContent');
+    
+    if (myRequests.length === 0) {
+        content.innerHTML = '<p style="text-align: center; color: #64748b;">No hay solicitudes pendientes</p>';
+    } else {
+        content.innerHTML = myRequests.map(req => `
+            <div style="background: #334155; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <p style="margin-bottom: 10px;"><strong>Equipo:</strong> ${req.teamName}</p>
+                <p style="margin-bottom: 5px;"><strong>Capitán:</strong> ${req.captainName}</p>
+                <p style="margin-bottom: 5px;"><strong>Teléfono:</strong> ${req.phone}</p>
+                <p style="margin-bottom: 5px;"><strong>Email:</strong> ${req.email}</p>
+                <p style="margin-bottom: 5px;"><strong>Torneo:</strong> ${req.tournamentName}</p>
+                ${req.notes ? `<p style="margin-bottom: 10px;"><strong>Notas:</strong> ${req.notes}</p>` : ''}
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="btn btn-success btn-sm" onclick="respondToRequest(${req.id}, true)">Aceptar</button>
+                    <button class="btn btn-danger btn-sm" onclick="respondToRequest(${req.id}, false)">Rechazar</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    app.showModal('requestsModal');
+}
+
+function respondToRequest(requestId, accepted) {
+    const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+    const request = requests.find(r => r.id === requestId);
+    
+    if (!request) {
+        app.showAlert('Solicitud no encontrada', 'danger');
+        return;
+    }
+
+    const result = db.respondToTournamentRequest(requestId, accepted);
+    
+    if (result.success) {
+        app.showAlert(accepted ? 'Solicitud aceptada' : 'Solicitud rechazada', 'success');
+        viewTournamentRequests(); // Refresh the list
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
 }
 </script>
 </body>

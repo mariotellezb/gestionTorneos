@@ -698,6 +698,251 @@ tbody tr:hover {
     margin: 5px 0;
 }
 
+/* ======================== ACTION SECTION (Dashboard) ======================== */
+.action-section {
+    background: #1e293b;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    border: 1px solid #334155;
+}
+
+.action-title {
+    text-align: center;
+    color: #38bdf8;
+    font-size: 24px;
+    margin-bottom: 25px;
+}
+
+.action-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+.action-card {
+    display: flex;
+    justify-content: center;
+}
+
+.action-card.left {
+    justify-content: flex-end;
+}
+
+.action-card.right {
+    justify-content: flex-start;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 50px;
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border: 2px solid #38bdf8;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 200px;
+}
+
+.action-btn:hover {
+    background: linear-gradient(135deg, #334155 0%, #475569 100%);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(56, 189, 248, 0.3);
+}
+
+.action-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+}
+
+.action-text {
+    color: #e2e8f0;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+/* ======================== HEADER WITH NOTIFICATIONS ======================== */
+.header {
+    background: #1e293b;
+    border-bottom: 1px solid #334155;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-left {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.header h1 {
+    color: #38bdf8;
+    font-size: 28px;
+    margin: 0;
+}
+
+.user-greeting {
+    color: #cbd5e1;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.user-greeting span {
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+/* ======================== NOTIFICATIONS ======================== */
+.notifications-container {
+    position: relative;
+}
+
+.notifications-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.3s ease;
+    position: relative;
+}
+
+.notifications-btn:hover {
+    background: #334155;
+}
+
+.notification-icon {
+    font-size: 24px;
+}
+
+.notification-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ef4444;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.notifications-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 350px;
+    max-height: 400px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    display: none;
+    overflow: hidden;
+}
+
+.notifications-dropdown.active {
+    display: block;
+}
+
+.notifications-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #334155;
+    background: #334155;
+}
+
+.notifications-header h4 {
+    color: #38bdf8;
+    margin: 0;
+    font-size: 16px;
+}
+
+.mark-read-btn {
+    background: transparent;
+    border: none;
+    color: #38bdf8;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.mark-read-btn:hover {
+    background: #475569;
+}
+
+.notifications-list {
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.no-notifications {
+    text-align: center;
+    color: #64748b;
+    padding: 30px;
+    font-size: 14px;
+}
+
+.notification-item {
+    display: flex;
+    gap: 12px;
+    padding: 15px;
+    border-bottom: 1px solid #334155;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.notification-item:hover {
+    background: #334155;
+}
+
+.notification-item.unread {
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.notification-item.read {
+    opacity: 0.7;
+}
+
+.notification-content {
+    flex: 1;
+}
+
+.notification-title {
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.notification-message {
+    color: #cbd5e1;
+    font-size: 13px;
+    margin-bottom: 5px;
+}
+
+.notification-time {
+    color: #64748b;
+    font-size: 11px;
+}
+
 /* ======================== MODALS ======================== */
 .modal {
     display: none;
