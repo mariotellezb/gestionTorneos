@@ -166,6 +166,47 @@
     </div>
 </div>
 
+<!-- MODAL REGISTRO A TORNEO -->
+<div id="joinTournamentModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Unirse a un Torneo</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('joinTournamentModal')">&times;</button>
+        </div>
+        <form id="joinTournamentForm">
+            <input type="hidden" id="joinTournamentSelect">
+            <div class="form-group">
+                <label>Torneo</label>
+                <input type="text" id="joinTournamentName" readonly style="background: #1e293b;">
+            </div>
+            <div class="form-group">
+                <label>Nombre del Equipo</label>
+                <input type="text" id="joinTeamName" placeholder="Ingresa el nombre de tu equipo" required>
+            </div>
+            <div class="form-group">
+                <label>Nombre del Capitán</label>
+                <input type="text" id="joinCaptainName" placeholder="Nombre del capitán del equipo" required>
+            </div>
+            <div class="form-group">
+                <label>Teléfono de Contacto</label>
+                <input type="tel" id="joinPhone" placeholder="Número de teléfono" required>
+            </div>
+            <div class="form-group">
+                <label>Correo Electrónico</label>
+                <input type="email" id="joinEmail" placeholder="Correo electrónico de contacto" required>
+            </div>
+            <div class="form-group">
+                <label>Notas Adicionales</label>
+                <textarea id="joinNotes" placeholder="Información adicional sobre tu equipo (opcional)"></textarea>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('joinTournamentModal')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="js/db.js"></script>
 <script src="js/app.js"></script>
 <script>
@@ -197,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('createTournamentBtn').addEventListener('click', openCreateModal);
     document.getElementById('tournamentForm').addEventListener('submit', saveTournament);
     document.getElementById('searchTournament').addEventListener('input', filterTournaments);
+    document.getElementById('joinTournamentForm').addEventListener('submit', submitJoinRequest);
 });
 
 function loadTournaments() {
@@ -212,6 +254,19 @@ function loadTournaments() {
     tournaments.forEach(tournament => {
         const row = document.createElement('tr');
         const teamsCount = tournament.teams ? tournament.teams.length : 0;
+        const currentUser = db.getCurrentUser();
+        const isOrganizer = currentUser && tournament.organizerId === currentUser.id;
+        
+        // Check if user already has a pending request for this tournament
+        let hasPendingRequest = false;
+        if (currentUser) {
+            const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+            hasPendingRequest = requests.some(r => 
+                r.tournamentId === tournament.id && 
+                r.userId === currentUser.id && 
+                r.status === 'pending'
+            );
+        }
         
         row.innerHTML = `
             <td>${tournament.name}</td>
@@ -223,6 +278,10 @@ function loadTournaments() {
             <td>${teamsCount}/${tournament.maxTeams}</td>
             <td>
                 <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="viewTournamentDetails(${tournament.id})">Ver</button>
+                ${!isOrganizer && currentUser && !hasPendingRequest && teamsCount < tournament.maxTeams ? `
+                    <button class="btn btn-primary" style="padding: 5px 10px;" onclick="openJoinTournament(${tournament.id})">Unirse</button>
+                ` : ''}
+                ${hasPendingRequest ? `<span style="color: #f59e0b; font-size: 12px;">Pendiente</span>` : ''}
                 ${app.canEditTournament(tournament.id) ? `
                     <button class="btn btn-warning" style="padding: 5px 10px;" onclick="editTournament(${tournament.id})">Editar</button>
                     <button class="btn btn-danger" style="padding: 5px 10px;" onclick="deleteTournament(${tournament.id})">Eliminar</button>
@@ -347,6 +406,80 @@ function filterTournaments() {
         const text = row.textContent.toLowerCase();
         row.style.display = text.includes(searchValue) ? '' : 'none';
     });
+}
+
+function openJoinTournament(tournamentId) {
+    const tournament = db.getTournamentById(tournamentId);
+    if (!tournament) return;
+
+    // Check if tournament is full
+    const teamsCount = tournament.teams ? tournament.teams.length : 0;
+    if (teamsCount >= tournament.maxTeams) {
+        app.showAlert('Este torneo ya está completo', 'danger');
+        return;
+    }
+
+    // Check if user already requested or joined
+    const currentUser = db.getCurrentUser();
+    if (!currentUser) {
+        app.showAlert('Debes iniciar sesión para unirte a un torneo', 'danger');
+        return;
+    }
+
+    const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
+    const existingRequest = requests.find(r => 
+        r.tournamentId === tournamentId && 
+        r.userId === currentUser.id && 
+        r.status === 'pending'
+    );
+
+    if (existingRequest) {
+        app.showAlert('Ya tienes una solicitud pendiente para este torneo', 'warning');
+        return;
+    }
+
+    // Show join modal with tournament pre-selected
+    document.getElementById('joinTournamentSelect').value = tournamentId;
+    document.getElementById('joinTournamentName').value = tournament.name;
+    app.showModal('joinTournamentModal');
+}
+
+function submitJoinRequest(e) {
+    e.preventDefault();
+
+    const tournamentId = parseInt(document.getElementById('joinTournamentSelect').value);
+    const tournament = db.getTournamentById(tournamentId);
+    const currentUser = db.getCurrentUser();
+
+    if (!tournament || !currentUser) {
+        app.showAlert('Error al procesar la solicitud', 'danger');
+        return;
+    }
+
+    const data = {
+        tournamentId: tournamentId,
+        tournamentName: tournament.name,
+        userId: currentUser.id,
+        userName: currentUser.name,
+        teamName: document.getElementById('joinTeamName').value,
+        captainName: document.getElementById('joinCaptainName').value,
+        phone: document.getElementById('joinPhone').value,
+        email: document.getElementById('joinEmail').value,
+        notes: document.getElementById('joinNotes').value,
+        status: 'pending',
+        requestedAt: new Date().toISOString()
+    };
+
+    const result = db.requestJoinTournamentWithDetails(data);
+
+    if (result.success) {
+        app.showAlert(result.message, 'success');
+        app.closeModal('joinTournamentModal');
+        document.getElementById('joinTournamentForm').reset();
+        loadTournaments(); // Refresh to hide the Join button
+    } else {
+        app.showAlert(result.message, 'danger');
+    }
 }
 
 function viewTournamentRequests() {
