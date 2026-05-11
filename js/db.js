@@ -104,6 +104,10 @@ class Database {
         if (!localStorage.getItem('currentUser')) {
             localStorage.setItem('currentUser', JSON.stringify(null));
         }
+
+        // Initialize additional data
+        this.initializeTournamentRequests();
+        this.initializeNotifications();
     }
 
     // ======================== USER METHODS ========================

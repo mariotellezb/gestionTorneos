@@ -194,14 +194,6 @@ document.addEventListener('DOMContentLoaded', function() {
             dropdown.classList.remove('active');
         }
     });
-    
-    // Event listener for join tournament form
-    const joinForm = document.getElementById('joinTournamentForm');
-    if (joinForm) {
-        joinForm.addEventListener('submit', function(e) {
-            app.submitJoinRequest(e);
-        });
-    }
 });
 
 function loadStatistics() {

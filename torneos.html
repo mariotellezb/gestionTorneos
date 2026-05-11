@@ -470,7 +470,7 @@ function submitJoinRequest(e) {
         requestedAt: new Date().toISOString()
     };
 
-    const result = db.requestJoinTournamentWithDetails(data);
+    const result = db.requestJoinTournamentWithDetails(data.tournamentId, data.userId, data);
 
     if (result.success) {
         app.showAlert(result.message, 'success');
