@@ -8,8 +8,30 @@
 </head>
 <body>
 
-<div class="main-layout">
-    <!-- SIDEBAR -->
+<!-- Navbar (for non-logged users) -->
+<nav class="navbar" id="navbar" style="display: none;">
+    <div class="navbar-container">
+        <div class="navbar-logo">
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="logo-img">
+        </div>
+        
+        <div class="navbar-menu">
+            <a href="index.html" class="nav-link">Inicio</a>
+            <a href="index.html#organizar" class="nav-link">Organizar Torneo</a>
+            <a href="index.html#deportes" class="nav-link">Deportes</a>
+            <a href="index.html#recursos" class="nav-link">Recursos</a>
+            <a href="ayuda.html" class="nav-link">Centro de Ayuda</a>
+        </div>
+        
+        <div class="navbar-buttons">
+            <button class="btn btn-secondary" onclick="window.location.href='login.html'">Iniciar Sesión</button>
+            <button class="btn btn-primary" onclick="window.location.href='signin.html'">Registrarse</button>
+        </div>
+    </div>
+</nav>
+
+<div class="main-layout" id="mainLayout">
+    <!-- SIDEBAR (for logged users) -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
@@ -73,30 +95,38 @@
 <script src="js/app.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    app.checkAuth();
-    
     const currentUser = db.getCurrentUser();
     if (currentUser) {
+        // Logged in: show sidebar layout
+        document.getElementById('navbar').style.display = 'none';
+        document.getElementById('mainLayout').style.display = 'flex';
         document.getElementById('userName').textContent = currentUser.name;
         document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
 
         if (app.isAdmin()) {
             document.getElementById('adminLink').style.display = 'block';
         }
-    }
 
-    app.initializeNavigation();
+        app.initializeNavigation();
+        // Change soporte link to logged help
+        document.getElementById('soporteLink').href = 'ayuda-logueado.html';
+    } else {
+        // Not logged in: show navbar layout
+        document.getElementById('navbar').style.display = 'block';
+        document.getElementById('mainLayout').style.display = 'none';
+        // Soporte link already points to ayuda.html
+    }
 });
 </script>
 
 <!-- Footer -->
-<footer class="footer">
+<footer class="footer" id="footer">
     <div class="footer-content">
         <a href="terminos.html" class="footer-link">Términos y Condiciones</a>
         <span class="footer-separator">|</span>
         <a href="privacidad.html" class="footer-link">Privacidad</a>
         <span class="footer-separator">|</span>
-        <a href="ayuda-logueado.html" class="footer-link">Soporte</a>
+        <a href="ayuda.html" class="footer-link" id="soporteLink">Soporte</a>
         <span class="footer-separator">|</span>
         <span class="footer-text">Copyright</span>
         <span class="footer-separator">|</span>
