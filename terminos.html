@@ -5,133 +5,225 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Términos y Condiciones - Gestión de Torneos</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        body {
+            background: #f6f8fa;
+            color: #24292f;
+        }
+        .doc-header {
+            background: #ffffff;
+            border-bottom: 1px solid #e1e4e8;
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .doc-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .doc-logo img {
+            width: 32px;
+            height: 32px;
+        }
+        .doc-logo h1 {
+            font-size: 20px;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+        .doc-header-links {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .doc-header-links a {
+            color: #0969da;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .doc-page {
+            display: flex;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+            gap: 32px;
+        }
+        .doc-sidebar {
+            min-width: 220px;
+            max-width: 240px;
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 12px;
+            padding: 24px;
+            position: sticky;
+            top: 24px;
+            height: fit-content;
+        }
+        .doc-sidebar h2 {
+            margin-top: 0;
+            font-size: 14px;
+            color: #57606a;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .doc-sidebar ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .doc-sidebar li {
+            margin-bottom: 12px;
+        }
+        .doc-sidebar a {
+            color: #0969da;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .doc-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+        .doc-section {
+            background: #ffffff;
+            border: 1px solid #d0d7de;
+            border-radius: 12px;
+            padding: 28px;
+        }
+        .doc-section h2 {
+            margin-top: 0;
+            font-size: 22px;
+            color: #1f2937;
+        }
+        .doc-section p {
+            line-height: 1.75;
+            margin: 16px 0;
+            color: #475569;
+        }
+        .doc-section ul {
+            margin: 16px 0;
+            padding-left: 20px;
+            color: #475569;
+        }
+        .doc-section li {
+            margin-bottom: 10px;
+        }
+        .doc-footer {
+            background: #ffffff;
+            border-top: 1px solid #e1e4e8;
+            padding: 20px 24px;
+            text-align: center;
+            font-size: 14px;
+            color: #57606a;
+        }
+        .doc-footer a {
+            color: #0969da;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        @media (max-width: 900px) {
+            .doc-page {
+                flex-direction: column;
+                padding: 24px;
+            }
+            .doc-sidebar {
+                position: static;
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
 
-<!-- Navbar (for non-logged users) -->
-<nav class="navbar" id="navbar" style="display: none;">
-    <div class="navbar-container">
-        <div class="navbar-logo">
-            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="logo-img">
-        </div>
-        
-        <div class="navbar-menu">
-            <a href="index.html" class="nav-link">Inicio</a>
-            <a href="index.html#organizar" class="nav-link">Organizar Torneo</a>
-            <a href="index.html#deportes" class="nav-link">Deportes</a>
-            <a href="index.html#recursos" class="nav-link">Recursos</a>
-            <a href="ayuda.html" class="nav-link">Centro de Ayuda</a>
-        </div>
-        
-        <div class="navbar-buttons">
-            <button class="btn btn-secondary" onclick="window.location.href='login.html'">Iniciar Sesión</button>
-            <button class="btn btn-primary" onclick="window.location.href='signin.html'">Registrarse</button>
+<header class="doc-header">
+    <div class="doc-logo">
+        <img src="img/tl_letters.png" alt="Troyan Legacy logo">
+        <div>
+            <strong>Gestión de Torneos</strong>
+            <p style="margin: 4px 0 0; color: #57606a; font-size: 13px;">Términos y Condiciones</p>
         </div>
     </div>
-</nav>
+    <nav class="doc-header-links">
+        <a href="index.html">Inicio</a>
+        <a href="ayuda.html">Centro de Ayuda</a>
+        <a href="privacidad.html">Privacidad</a>
+    </nav>
+</header>
 
-<div class="main-layout" id="mainLayout">
-    <!-- SIDEBAR (for logged users) -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
-        </div>
-        <nav>
-            <ul class="sidebar-nav">
-                <li><a href="dashboard.html">📊 Dashboard</a></li>
-                <li><a href="torneos.html">🏅 Torneos</a></li>
-                <li><a href="equipos.html">👥 Equipos</a></li>
-                <li><a href="calendario.html">📅 Calendario</a></li>
-                <li><a href="resultados.html">📈 Resultados</a></li>
-                <li><a href="perfil.html">👤 Mi Perfil</a></li>
-                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
-                <li><a href="ayuda-logueado.html">❓ Centro de Ayuda</a></li>
-            </ul>
-        </nav>
-        <div class="user-info">
-            <p id="userName" style="margin-bottom: 5px;"></p>
-            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
-            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
-        </div>
+<main class="doc-page">
+    <aside class="doc-sidebar">
+        <h2>Contenido</h2>
+        <ul>
+            <li><a href="#aceptacion">Aceptación de los Términos</a></li>
+            <li><a href="#descripcion">Descripción del Servicio</a></li>
+            <li><a href="#uso">Uso Aceptable</a></li>
+            <li><a href="#responsabilidades">Responsabilidades del Usuario</a></li>
+            <li><a href="#propiedad">Propiedad Intelectual</a></li>
+            <li><a href="#limitacion">Limitación de Responsabilidad</a></li>
+            <li><a href="#modificaciones">Modificaciones</a></li>
+            <li><a href="#contacto">Contacto</a></li>
+        </ul>
     </aside>
 
-    <!-- MAIN CONTENT -->
-    <div class="main-content">
-        <div class="header">
-            <h1>Términos y Condiciones de Servicio</h1>
-        </div>
+    <section class="doc-content">
+        <article class="doc-section" id="aceptacion">
+            <h2>1. Aceptación de los Términos</h2>
+            <p>Al acceder, navegar y utilizar la plataforma de Gestión de Torneos de Troyan Legacy, aceptas cumplir con estos términos y condiciones. Si no estás de acuerdo con alguno de ellos, por favor no utilices este servicio.</p>
+        </article>
 
-        <div class="content">
-            <div class="card">
-                <h2>1. Aceptación de los Términos</h2>
-                <p>Al acceder y utilizar la plataforma de Gestión de Torneos de Troyan Legacy, aceptas estar sujeto a estos términos y condiciones de servicio.</p>
+        <article class="doc-section" id="descripcion">
+            <h2>2. Descripción del Servicio</h2>
+            <p>Esta plataforma ofrece herramientas para crear, administrar y seguir torneos deportivos. Incluye gestión de equipos, programación de partidos, registro de resultados, y generación de estadísticas.</p>
+        </article>
 
-                <h2>2. Descripción del Servicio</h2>
-                <p>Nuestra plataforma permite la organización, gestión y seguimiento de torneos deportivos de diversos tipos.</p>
+        <article class="doc-section" id="uso">
+            <h2>3. Uso Aceptable</h2>
+            <p>El usuario se compromete a usar la plataforma de manera legítima y responsable. Está prohibido utilizarla para actividades ilegales, difamatorias, o que violen los derechos de terceros.</p>
+            <ul>
+                <li>No publicar información falsa o engañosa.</li>
+                <li>No interferir con el funcionamiento del servicio.</li>
+                <li>No intentar acceder a áreas restringidas sin autorización.</li>
+            </ul>
+        </article>
 
-                <h2>3. Uso Aceptable</h2>
-                <p>Te comprometes a utilizar la plataforma de manera responsable y respetuosa, sin violar leyes o derechos de terceros.</p>
+        <article class="doc-section" id="responsabilidades">
+            <h2>4. Responsabilidades del Usuario</h2>
+            <p>Cada usuario es responsable de mantener la confidencialidad de sus datos de acceso y de todas las actividades realizadas bajo su cuenta. Si detectas un uso no autorizado, notifícanos inmediatamente.</p>
+        </article>
 
-                <h2>4. Responsabilidades del Usuario</h2>
-                <p>Eres responsable de mantener la confidencialidad de tu cuenta y de toda la actividad que ocurra bajo tu cuenta.</p>
+        <article class="doc-section" id="propiedad">
+            <h2>5. Propiedad Intelectual</h2>
+            <p>El contenido de este sitio, incluyendo textos, gráficos y diseño, es propiedad de Troyan Legacy o está autorizado para su uso. Queda prohibida la reproducción no autorizada.</p>
+        </article>
 
-                <h2>5. Propiedad Intelectual</h2>
-                <p>Todo el contenido de la plataforma está protegido por derechos de autor y otras leyes de propiedad intelectual.</p>
+        <article class="doc-section" id="limitacion">
+            <h2>6. Limitación de Responsabilidad</h2>
+            <p>La plataforma se ofrece “tal cual”, sin garantías implícitas. Troyan Legacy no será responsable por daños indirectos, incidentales o consecuentes derivados del uso del servicio.</p>
+        </article>
 
-                <h2>6. Limitación de Responsabilidad</h2>
-                <p>No somos responsables por daños indirectos, incidentales o consecuentes que puedan surgir del uso de la plataforma.</p>
+        <article class="doc-section" id="modificaciones">
+            <h2>7. Modificaciones</h2>
+            <p>Podemos modificar estos términos en cualquier momento. Las actualizaciones entrarán en vigor desde su publicación en esta página. Se recomienda revisarlos periódicamente.</p>
+        </article>
 
-                <h2>7. Modificaciones</h2>
-                <p>Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios serán efectivos inmediatamente.</p>
+        <article class="doc-section" id="contacto">
+            <h2>8. Contacto</h2>
+            <p>Si tienes dudas sobre estos términos o necesitas asistencia, escríbenos a <a href="mailto:soporte@troyanlegacy.com">soporte@troyanlegacy.com</a>.</p>
+        </article>
+    </section>
+</main>
 
-                <h2>8. Contacto</h2>
-                <p>Para preguntas sobre estos términos, contacta a soporte@troyanlegacy.com</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="js/db.js"></script>
-<script src="js/app.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const currentUser = db.getCurrentUser();
-    if (currentUser) {
-        // Logged in: show sidebar layout
-        document.getElementById('navbar').style.display = 'none';
-        document.getElementById('mainLayout').style.display = 'flex';
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
-
-        if (app.isAdmin()) {
-            document.getElementById('adminLink').style.display = 'block';
-        }
-
-        app.initializeNavigation();
-        // Change soporte link to logged help
-        document.getElementById('soporteLink').href = 'ayuda-logueado.html';
-    } else {
-        // Not logged in: show navbar layout
-        document.getElementById('navbar').style.display = 'block';
-        document.getElementById('mainLayout').style.display = 'none';
-        // Soporte link already points to ayuda.html
-    }
-});
-</script>
-
-<!-- Footer -->
-<footer class="footer" id="footer">
-    <div class="footer-content">
-        <a href="terminos.html" class="footer-link">Términos y Condiciones</a>
-        <span class="footer-separator">|</span>
-        <a href="privacidad.html" class="footer-link">Privacidad</a>
-        <span class="footer-separator">|</span>
-        <a href="ayuda.html" class="footer-link" id="soporteLink">Soporte</a>
-        <span class="footer-separator">|</span>
-        <span class="footer-text">Copyright</span>
-        <span class="footer-separator">|</span>
-        <a href="index.html" class="footer-link">Troyan Legacy</a>
-    </div>
+<footer class="doc-footer">
+    <a href="terminos.html">Términos y Condiciones</a>
+    <span>•</span>
+    <a href="privacidad.html">Privacidad</a>
+    <span>•</span>
+    <a href="ayuda.html">Soporte</a>
+    <span>•</span>
+    <a href="index.html">Troyan Legacy</a>
 </footer>
 
 </body>
