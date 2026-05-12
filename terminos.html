@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Términos y Condiciones - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+                <li><a href="ayuda-logueado.html">❓ Centro de Ayuda</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Términos y Condiciones de Servicio</h1>
+        </div>
+
+        <div class="content">
+            <div class="card">
+                <h2>1. Aceptación de los Términos</h2>
+                <p>Al acceder y utilizar la plataforma de Gestión de Torneos de Troyan Legacy, aceptas estar sujeto a estos términos y condiciones de servicio.</p>
+
+                <h2>2. Descripción del Servicio</h2>
+                <p>Nuestra plataforma permite la organización, gestión y seguimiento de torneos deportivos de diversos tipos.</p>
+
+                <h2>3. Uso Aceptable</h2>
+                <p>Te comprometes a utilizar la plataforma de manera responsable y respetuosa, sin violar leyes o derechos de terceros.</p>
+
+                <h2>4. Responsabilidades del Usuario</h2>
+                <p>Eres responsable de mantener la confidencialidad de tu cuenta y de toda la actividad que ocurra bajo tu cuenta.</p>
+
+                <h2>5. Propiedad Intelectual</h2>
+                <p>Todo el contenido de la plataforma está protegido por derechos de autor y otras leyes de propiedad intelectual.</p>
+
+                <h2>6. Limitación de Responsabilidad</h2>
+                <p>No somos responsables por daños indirectos, incidentales o consecuentes que puedan surgir del uso de la plataforma.</p>
+
+                <h2>7. Modificaciones</h2>
+                <p>Nos reservamos el derecho de modificar estos términos en cualquier momento. Los cambios serán efectivos inmediatamente.</p>
+
+                <h2>8. Contacto</h2>
+                <p>Para preguntas sobre estos términos, contacta a soporte@troyanlegacy.com</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    app.checkAuth();
+    
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+    }
+
+    app.initializeNavigation();
+});
+</script>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <a href="terminos.html" class="footer-link">Términos y Condiciones</a>
+        <span class="footer-separator">|</span>
+        <a href="privacidad.html" class="footer-link">Privacidad</a>
+        <span class="footer-separator">|</span>
+        <a href="ayuda-logueado.html" class="footer-link">Soporte</a>
+        <span class="footer-separator">|</span>
+        <span class="footer-text">Copyright</span>
+        <span class="footer-separator">|</span>
+        <a href="index.html" class="footer-link">Troyan Legacy</a>
+    </div>
+</footer>
+
+</body>
+</html>

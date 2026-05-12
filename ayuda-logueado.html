@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro de Ayuda - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+                <li><a href="ayuda-logueado.html">❓ Centro de Ayuda</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Centro de Ayuda</h1>
+            <p>¿Necesitas ayuda? Consulta nuestras preguntas frecuentes o charla con nuestro asistente</p>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- Sección de Tabs -->
+            <div class="help-tabs">
+                <button class="tab-btn active" onclick="switchTab('faq')">📋 Preguntas Frecuentes</button>
+                <button class="tab-btn" onclick="switchTab('chatbot')">💬 Chatbot</button>
+            </div>
+
+            <!-- TAB: FAQ -->
+            <div id="faq" class="tab-content active">
+                <div class="faq-section">
+                    <h2>Preguntas Frecuentes</h2>
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Cómo creo una cuenta?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Para crear una cuenta, haz clic en el botón "Registrarse" en la página principal. Completa tu nombre, correo electrónico y contraseña. ¡Listo! Ya podrás acceder a la plataforma.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Cómo creo un torneo?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Inicia sesión y ve a la sección "Torneos". Haz clic en "Crear Torneo", selecciona el deporte, configura los equipos participantes y establece las fechas. El sistema generará automáticamente el calendario.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Puedo cambiar mi contraseña?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Sí. Ve a tu perfil de usuario (Mi Perfil) y busca la opción "Cambiar Contraseña". Proporciona tu contraseña actual y la nueva que deseas establecer.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Cómo agrego equipos a un torneo?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Dentro del torneo, ve a la sección "Equipos". Puedes crear nuevos equipos o agregar equipos ya existentes en la plataforma. Define el nombre, los jugadores y la información de contacto.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Cómo registro los resultados de los partidos?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>En la sección "Resultados", encuentra el partido que deseas actualizar. Ingresa el marcador final, goles/puntos de cada equipo y otros detalles relevantes. Los cambios se reflejarán automáticamente en la clasificación.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Qué deportes soporta la plataforma?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Soportamos múltiples deportes: Fútbol, Baloncesto, Tenis, Voleibol, Beisbol, Boxeo, Fútbol Americano, Hockey, Hockey sobre Pasto, Cricket, Lacrosse, Esgrima, Golf e Hipismo. ¡Y más pueden agregarse!</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Puedo generar reportes?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Sí. En cada torneo, encontrarás la opción "Generar Reporte" que te permite descargar un documento completo con estadísticas, clasificaciones y resultados de todos los partidos.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Es segura mi información?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Sí. Utilizamos encriptación de datos y medidas de seguridad avanzadas para proteger tu información personal. Consulta nuestra política de privacidad para más detalles.</p>
+                        </div>
+                    </div>
+
+                    <div class="faq-item">
+                        <div class="faq-question" onclick="toggleFAQ(this)">
+                            <span class="faq-icon">+</span>
+                            <h3>¿Cómo contacto al soporte?</h3>
+                        </div>
+                        <div class="faq-answer">
+                            <p>Puedes usar el chatbot en esta página para consultas rápidas, o enviarnos un correo a soporte@troyanlegacy.com para problemas más complejos. Respondemos en menos de 24 horas.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: CHATBOT -->
+            <div id="chatbot" class="tab-content">
+                <div class="chatbot-section">
+                    <h2>Asistente Virtual</h2>
+                    <p>¡Hola! Soy tu asistente virtual. Escribe tu pregunta y te ayudaré.</p>
+                    <div class="chatbot-container">
+                        <div id="chatMessages" class="chat-messages">
+                            <div class="message bot-message">
+                                <p>¡Hola! ¿En qué puedo ayudarte hoy?</p>
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <input type="text" id="chatInput" placeholder="Escribe tu mensaje..." onkeypress="handleKeyPress(event)">
+                            <button onclick="sendMessage()" class="btn btn-primary">Enviar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    app.checkAuth();
+    
+    const currentUser = db.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+    }
+
+    app.initializeNavigation();
+});
+
+function switchTab(tabName) {
+    // Hide all content
+    const contents = document.querySelectorAll('.tab-content');
+    contents.forEach(content => content.classList.remove('active'));
+
+    // Remove active class from buttons
+    const buttons = document.querySelectorAll('.tab-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+
+    // Show selected tab
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+}
+
+function toggleFAQ(element) {
+    const faqItem = element.parentElement;
+    faqItem.classList.toggle('open');
+    
+    const icon = element.querySelector('.faq-icon');
+    icon.textContent = faqItem.classList.contains('open') ? '−' : '+';
+}
+
+function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+        sendMessage();
+    }
+}
+
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    if (!message) return;
+
+    // Add user message
+    addMessage(message, 'user');
+    input.value = '';
+
+    // Simulate bot response
+    setTimeout(() => {
+        const response = getBotResponse(message);
+        addMessage(response, 'bot');
+    }, 1000);
+}
+
+function addMessage(text, sender) {
+    const messages = document.getElementById('chatMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}-message`;
+    messageDiv.innerHTML = `<p>${text}</p>`;
+    messages.appendChild(messageDiv);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function getBotResponse(message) {
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('torneo') || lowerMessage.includes('crear')) {
+        return 'Para crear un torneo, ve a la sección "Torneos" en el menú lateral, haz clic en "Crear Torneo" y completa la información requerida.';
+    } else if (lowerMessage.includes('equipo') || lowerMessage.includes('unirse')) {
+        return 'Para unirte a un torneo, ve a la sección "Torneos", selecciona un torneo y haz clic en "Unirse". Completa la información de tu equipo.';
+    } else if (lowerMessage.includes('contraseña') || lowerMessage.includes('cambiar')) {
+        return 'Para cambiar tu contraseña, ve a "Mi Perfil" y busca la opción "Cambiar Contraseña".';
+    } else if (lowerMessage.includes('resultado') || lowerMessage.includes('partido')) {
+        return 'Para registrar resultados, ve a la sección "Resultados" y actualiza el marcador del partido correspondiente.';
+    } else if (lowerMessage.includes('ayuda') || lowerMessage.includes('soporte')) {
+        return 'Puedes consultar las preguntas frecuentes en esta página o enviarme un mensaje más específico.';
+    } else {
+        return 'Lo siento, no entiendo tu pregunta. Intenta reformularla o consulta las preguntas frecuentes.';
+    }
+}
+</script>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <a href="terminos.html" class="footer-link">Términos y Condiciones</a>
+        <span class="footer-separator">|</span>
+        <a href="privacidad.html" class="footer-link">Privacidad</a>
+        <span class="footer-separator">|</span>
+        <a href="ayuda-logueado.html" class="footer-link">Soporte</a>
+        <span class="footer-separator">|</span>
+        <span class="footer-text">Copyright</span>
+        <span class="footer-separator">|</span>
+        <a href="index.html" class="footer-link">Troyan Legacy</a>
+    </div>
+</footer>
+
+</body>
+</html>
