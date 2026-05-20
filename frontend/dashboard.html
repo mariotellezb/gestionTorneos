@@ -157,62 +157,80 @@
 
 <script src="js/db.js"></script>
 <script src="js/app.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check authentication
-    app.checkAuth();
+document.addEventListener('DOMContentLoaded', async function() {
+    // 1. Verificamos autenticación (ya usa el localStorage actualizado por el nuevo login)
+    if (!app.checkAuth()) return;
 
-    // Update user info
-    const currentUser = db.getCurrentUser();
+    // 2. Actualizamos la info del usuario
+    const currentUser = app.currentUser;
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
-        document.getElementById('userNameHeader').textContent = currentUser.name.split(' ')[0];
+        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
+        
+        const firstName = (currentUser.name || currentUser.username || '').split(' ')[0];
+        document.getElementById('userNameHeader').textContent = firstName;
 
-        // Show admin link if user is admin
         if (app.isAdmin()) {
-            document.getElementById('adminLink').style.display = 'block';
+            const adminLink = document.getElementById('adminLink');
+            if(adminLink) adminLink.style.display = 'block';
         }
         
-        // Load notifications
-        app.loadNotifications();
+        // Mantenemos las notificaciones locales por ahora
+        // app.loadNotifications();
     }
 
-    // Load statistics
-    loadStatistics();
-    loadRecentTournaments();
-    loadUpcomingMatches();
+    // 3. Cargamos los datos desde Django (Esperamos a que terminen con await)
+    try {
+        // Ejecutamos las tres llamadas en paralelo para que cargue más rápido
+        const [tournaments, teams, matches] = await Promise.all([
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/teams/'),
+            app.fetchAPI('/matches/')
+        ]);
 
-    // Update navigation
+        loadStatistics(tournaments, teams, matches);
+        loadRecentTournaments(tournaments);
+        loadUpcomingMatches(matches, tournaments, teams);
+
+    } catch (error) {
+        console.error("Error al cargar el dashboard desde Django:", error);
+        app.showAlert("Error al cargar los datos del servidor", "danger");
+    }
+
+    // 4. Actualizamos navegación
     app.initializeNavigation();
     
-    // Close notifications dropdown when clicking outside
+    // 5. Evento para cerrar notificaciones
     document.addEventListener('click', function(e) {
         const dropdown = document.getElementById('notificationsDropdown');
         const btn = document.getElementById('notificationsBtn');
-        if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+        if (dropdown && btn && !dropdown.contains(e.target) && !btn.contains(e.target)) {
             dropdown.classList.remove('active');
         }
     });
 });
 
-function loadStatistics() {
-    const tournaments = db.getAllTournaments();
-    const teams = db.getAllTeams();
-    const matches = db.getAllMatches();
-    const users = db.getAllUsers();
-
+function loadStatistics(tournaments, teams, matches) {
     const activeTournaments = tournaments.filter(t => t.status === 'active').length;
+
+    // Para los usuarios, como aún no hacemos el endpoint, usamos un fallback temporal
+    let totalUsersCount = 0;
+    if (typeof db !== 'undefined' && db.getAllUsers) {
+        totalUsersCount = db.getAllUsers().length;
+    }
 
     document.getElementById('activeTournaments').textContent = activeTournaments;
     document.getElementById('totalTeams').textContent = teams.length;
     document.getElementById('totalMatches').textContent = matches.length;
-    document.getElementById('totalUsers').textContent = users.length;
+    document.getElementById('totalUsers').textContent = totalUsersCount;
 }
 
-function loadRecentTournaments() {
-    const tournaments = db.getAllTournaments();
+function loadRecentTournaments(tournaments) {
     const tbody = document.getElementById('recentTournamentsTable');
+    if (!tbody) return;
+    
     tbody.innerHTML = '';
 
     if (tournaments.length === 0) {
@@ -220,47 +238,65 @@ function loadRecentTournaments() {
         return;
     }
 
-    tournaments.slice(0, 5).forEach(tournament => {
+    // Ordenamos por los más recientes (asumiendo que los últimos tienen ID más alto)
+    const recent = tournaments.sort((a, b) => b.id - a.id).slice(0, 5);
+
+    recent.forEach(tournament => {
         const row = document.createElement('tr');
+        // Aseguramos de que startDate y endDate existan antes de formatear
+        const startDate = tournament.startDate ? app.formatDate(tournament.startDate) : 'N/A';
+        const endDate = tournament.endDate ? app.formatDate(tournament.endDate) : 'N/A';
+        
+        // Traducimos el status al español
+        const statusMap = { 'active': 'Activo', 'completed': 'Completado', 'cancelled': 'Cancelado' };
+        const statusEs = statusMap[tournament.status] || tournament.status;
+
         row.innerHTML = `
             <td>${tournament.name}</td>
             <td>${tournament.sport}</td>
-            <td>${app.formatDate(tournament.startDate)}</td>
-            <td>${app.formatDate(tournament.endDate)}</td>
-            <td><span style="color: #10b981; font-weight: bold;">${tournament.status}</span></td>
+            <td>${startDate}</td>
+            <td>${endDate}</td>
+            <td><span style="color: #10b981; font-weight: bold;">${statusEs}</span></td>
             <td>
-                <button class="btn btn-secondary" onclick="window.location.href='torneos.html'">Ver Detalles</button>
+                <button class="btn btn-secondary" onclick="window.location.href='torneos.html?id=${tournament.id}'">Ver Detalles</button>
             </td>
         `;
         tbody.appendChild(row);
     });
 }
 
-function loadUpcomingMatches() {
-    const matches = db.getAllMatches().filter(m => m.status === 'scheduled').sort((a, b) => 
-        new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time)
-    );
-
+function loadUpcomingMatches(matches, tournaments, teams) {
     const tbody = document.getElementById('upcomingMatchesTable');
+    if (!tbody) return;
+    
     tbody.innerHTML = '';
 
-    if (matches.length === 0) {
+    const scheduledMatches = matches.filter(m => m.status === 'scheduled').sort((a, b) => {
+        return new Date((a.date || '') + ' ' + (a.time || '')) - new Date((b.date || '') + ' ' + (b.time || ''));
+    });
+
+    if (scheduledMatches.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #cbd5e1;">No hay partidos programados</td></tr>';
         return;
     }
 
-    matches.slice(0, 5).forEach(match => {
-        const tournament = db.getTournamentById(match.tournamentId);
-        const homeTeam = db.getTeamById(match.homeTeamId);
-        const awayTeam = db.getTeamById(match.awayTeamId);
+    scheduledMatches.slice(0, 5).forEach(match => {
+        // Buscamos los nombres en los arreglos que ya descargamos
+        const tournament = tournaments.find(t => t.id === match.tournament) || tournaments.find(t => t.id === match.tournamentId);
+        const homeTeam = teams.find(t => t.id === match.homeTeam) || teams.find(t => t.id === match.homeTeamId);
+        const awayTeam = teams.find(t => t.id === match.awayTeam) || teams.find(t => t.id === match.awayTeamId);
 
         const row = document.createElement('tr');
+        
+        const dateStr = match.date ? app.formatDate(match.date) : 'Fecha N/A';
+        const timeStr = match.time ? match.time.substring(0,5) : 'Hora N/A';
+
         row.innerHTML = `
             <td>${tournament ? tournament.name : 'Torneo desconocido'}</td>
             <td>${homeTeam ? homeTeam.name : 'Equipo desconocido'}</td>
             <td>${awayTeam ? awayTeam.name : 'Equipo desconocido'}</td>
-            <td>${app.formatDate(match.date)} ${match.time}</td>
-            <td>${match.location}</td>
+            <td>${dateStr} ${timeStr}</td>
+            <td>${match.location || 'N/A'}</td>
         `;
         tbody.appendChild(row);
     });

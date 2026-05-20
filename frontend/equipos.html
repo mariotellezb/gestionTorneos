@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Equipos - Gestión de Torneos</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="main-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
+        </div>
+        <nav>
+            <ul class="sidebar-nav">
+                <li><a href="dashboard.html">📊 Dashboard</a></li>
+                <li><a href="torneos.html">🏅 Torneos</a></li>
+                <li><a href="equipos.html">👥 Equipos</a></li>
+                <li><a href="calendario.html">📅 Calendario</a></li>
+                <li><a href="resultados.html">📈 Resultados</a></li>
+                <li><a href="perfil.html">👤 Mi Perfil</a></li>
+                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+                <li><a href="ayuda-logueado.html">❓ Centro de Ayuda</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <p id="userName" style="margin-bottom: 5px;"></p>
+            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+        <div class="header">
+            <h1>Gestión de Equipos</h1>
+            <button id="createTeamBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Equipo</button>
+        </div>
+
+        <div class="content">
+            <div id="alert" class="alert"></div>
+
+            <!-- BÚSQUEDA -->
+            <div class="card">
+                <form id="filterForm">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <input type="text" id="searchTeam" placeholder="Buscar equipo por nombre...">
+                    </div>
+                </form>
+            </div>
+
+            <!-- LISTA DE EQUIPOS -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Capitán</th>
+                        <th>Miembros</th>
+                        <th>Fecha Registro</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="teamsTable">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #cbd5e1;">Cargando equipos...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREAR/EDITAR EQUIPO -->
+<div id="teamModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Crear Equipo</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('teamModal')">&times;</button>
+        </div>
+        <form id="teamForm">
+            <div class="form-group">
+                <label>Nombre del Equipo</label>
+                <input type="text" id="teamName" required>
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <textarea id="teamDescription" required></textarea>
+            </div>
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('teamModal')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL VER DETALLES Y GESTIONAR MIEMBROS -->
+<div id="teamDetailsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="teamDetailsTitle">Detalles del Equipo</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('teamDetailsModal')">&times;</button>
+        </div>
+        <div id="teamDetailsContent"></div>
+    </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+let currentEditingTeamId = null;
+let allUsers = []; // Guardaremos los usuarios aquí temporalmente
+
+document.addEventListener('DOMContentLoaded', async function() {
+    if (!app.checkAuth()) return;
+    
+    const currentUser = app.currentUser;
+    if (currentUser) {
+        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
+
+        if (app.isAdmin()) {
+            document.getElementById('adminLink').style.display = 'block';
+        }
+
+        // Permite crear equipo si es capitán, organizador o admin
+        if (app.isCaptain() || app.isAdmin() || app.isOrganizer()) {
+            document.getElementById('createTeamBtn').style.display = 'inline-block';
+        }
+    }
+
+    await loadTeams();
+    app.initializeNavigation();
+
+    document.getElementById('createTeamBtn').addEventListener('click', openCreateModal);
+    document.getElementById('teamForm').addEventListener('submit', saveTeam);
+    document.getElementById('searchTeam').addEventListener('input', filterTeams);
+});
+
+async function loadTeams() {
+    try {
+        const teams = await app.fetchAPI('/teams/');
+        const tbody = document.getElementById('teamsTable');
+        tbody.innerHTML = '';
+
+        if (teams.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #cbd5e1;">No hay equipos registrados</td></tr>';
+            return;
+        }
+
+        teams.forEach(team => {
+            const row = document.createElement('tr');
+            // Mapeo seguro para capitán (DRF puede devolver captain o captain_id)
+            const captainId = team.captain || team.captain_id || team.captainId;
+            const isCaptainOrAdmin = app.currentUser.id === captainId || app.isAdmin();
+            
+            row.innerHTML = `
+                <td>${team.name}</td>
+                <td>${team.description}</td>
+                <td>ID Capitán: ${captainId}</td>
+                <td>${team.members ? team.members.length : 0}</td>
+                <td>${app.formatDate(team.created_at || team.registeredDate)}</td>
+                <td>
+                    <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="viewTeamDetails(${team.id})">Ver</button>
+                    ${isCaptainOrAdmin ? `
+                        <button class="btn btn-warning" style="padding: 5px 10px;" onclick="editTeam(${team.id})">Editar</button>
+                        <button class="btn btn-danger" style="padding: 5px 10px;" onclick="deleteTeam(${team.id})">Eliminar</button>
+                    ` : ''}
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        console.error("Error cargando equipos:", error);
+        app.showAlert('Error al cargar equipos', 'danger');
+    }
+}
+
+function openCreateModal() {
+    currentEditingTeamId = null;
+    document.getElementById('modalTitle').textContent = 'Crear Equipo';
+    document.getElementById('teamForm').reset();
+    app.showModal('teamModal');
+}
+
+async function editTeam(teamId) {
+    try {
+        const team = await app.fetchAPI(`/teams/${teamId}/`);
+        currentEditingTeamId = teamId;
+        document.getElementById('modalTitle').textContent = 'Editar Equipo';
+        document.getElementById('teamName').value = team.name;
+        document.getElementById('teamDescription').value = team.description;
+        app.showModal('teamModal');
+    } catch (error) {
+        app.showAlert('Error al cargar datos del equipo', 'danger');
+    }
+}
+
+async function saveTeam(e) {
+    e.preventDefault();
+    const data = {
+        name: document.getElementById('teamName').value,
+        description: document.getElementById('teamDescription').value,
+        captain: app.currentUser.id,
+        captain_id: app.currentUser.id
+    };
+
+    try {
+        if (currentEditingTeamId) {
+            await app.fetchAPI(`/teams/${currentEditingTeamId}/`, { method: 'PUT', body: JSON.stringify(data) });
+            app.showAlert('Equipo actualizado', 'success');
+        } else {
+            await app.fetchAPI('/teams/', { method: 'POST', body: JSON.stringify(data) });
+            app.showAlert('Equipo creado', 'success');
+        }
+        app.closeModal('teamModal');
+        loadTeams();
+    } catch (error) {
+        app.showAlert('Error al guardar equipo', 'danger');
+    }
+}
+
+async function deleteTeam(teamId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este equipo en la base de datos?')) return;
+    try {
+        await app.fetchAPI(`/teams/${teamId}/`, { method: 'DELETE' });
+        app.showAlert('Equipo eliminado', 'success');
+        loadTeams();
+    } catch (error) {
+        app.showAlert('Error al eliminar equipo', 'danger');
+    }
+}
+
+async function viewTeamDetails(teamId) {
+    try {
+        const team = await app.fetchAPI(`/teams/${teamId}/`);
+        const captainId = team.captain || team.captain_id || team.captainId;
+        const members = team.members || [];
+        const isCaptainOrAdmin = app.currentUser.id === captainId || app.isAdmin();
+
+        // Intento de cargar usuarios (fallará silenciosamente si no tienes el endpoint /users/ en Django aún)
+        try { if(allUsers.length === 0) allUsers = await app.fetchAPI('/users/'); } catch(e) {}
+
+        let detailsHTML = `
+            <div style="margin-bottom: 15px;">
+                <p><strong>Nombre:</strong> ${team.name}</p>
+                <p><strong>Descripción:</strong> ${team.description}</p>
+                <p><strong>Miembros Totales:</strong> ${members.length}</p>
+            </div>
+            <div>
+                <h4 style="margin-bottom: 10px; color: #38bdf8;">Miembros del Equipo:</h4>
+                <ul style="list-style: none; padding: 0;">
+                    ${members.length > 0 ? members.map(memberId => `
+                        <li style="padding: 8px; background: #334155; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>• ID Jugador: ${memberId}</span>
+                        </li>
+                    `).join('') : '<p>Sin miembros</p>'}
+                </ul>
+            </div>
+        `;
+        document.getElementById('teamDetailsContent').innerHTML = detailsHTML;
+        document.getElementById('teamDetailsTitle').textContent = team.name;
+        app.showModal('teamDetailsModal');
+    } catch (error) {
+        app.showAlert('Error al cargar detalles', 'danger');
+    }
+}
+
+function filterTeams() {
+    const searchValue = document.getElementById('searchTeam').value.toLowerCase();
+    const rows = document.querySelectorAll('#teamsTable tr');
+    rows.forEach((row, index) => {
+        if (index === 0) return;
+        row.style.display = row.textContent.toLowerCase().includes(searchValue) ? '' : 'none';
+    });
+}
+</script>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <a href="terminos.html" class="footer-link">Términos y Condiciones</a>
+        <span class="footer-separator">|</span>
+        <a href="privacidad.html" class="footer-link">Privacidad</a>
+        <span class="footer-separator">|</span>
+        <a href="ayuda-logueado.html" class="footer-link">Soporte</a>
+        <span class="footer-separator">|</span>
+        <span class="footer-text">Copyright</span>
+        <span class="footer-separator">|</span>
+        <a href="index.html" class="footer-link">Troyan Legacy</a>
+    </div>
+</footer>
+
+</body>
+</html>

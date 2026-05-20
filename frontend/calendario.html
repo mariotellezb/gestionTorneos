@@ -142,88 +142,77 @@
     </div>
 </div>
 
-<script src="js/db.js"></script>
 <script src="js/app.js"></script>
 <script>
 let currentEditingMatchId = null;
 let allMatches = [];
+let allTournaments = [];
+let allTeams = [];
 
-document.addEventListener('DOMContentLoaded', function() {
-    app.checkAuth();
+document.addEventListener('DOMContentLoaded', async function() {
+    if (!app.checkAuth()) return;
     
-    const currentUser = db.getCurrentUser();
+    const currentUser = app.currentUser;
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
+        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
 
-        if (app.isAdmin()) {
-            document.getElementById('adminLink').style.display = 'block';
-        }
-
-        if (app.isOrganizer()) {
-            document.getElementById('createMatchBtn').style.display = 'inline-block';
-        }
+        if (app.isAdmin()) document.getElementById('adminLink').style.display = 'block';
+        if (app.isAdmin() || app.isOrganizer()) document.getElementById('createMatchBtn').style.display = 'inline-block';
     }
 
-    loadTournaments();
-    loadMatches();
+    await loadInitialData();
     app.initializeNavigation();
 
     document.getElementById('createMatchBtn').addEventListener('click', openCreateModal);
     document.getElementById('matchForm').addEventListener('submit', saveMatch);
 });
 
-function loadTournaments() {
-    const tournaments = db.getAllTournaments();
+async function loadInitialData() {
+    try {
+        // Cargamos torneos, equipos y partidos al mismo tiempo
+        [allTournaments, allTeams, allMatches] = await Promise.all([
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/teams/'),
+            app.fetchAPI('/matches/')
+        ]);
+        
+        populateTournamentDropdowns();
+        displayMatches(allMatches);
+    } catch (error) {
+        app.showAlert('Error al cargar los datos del calendario', 'danger');
+    }
+}
+
+function populateTournamentDropdowns() {
     const select = document.getElementById('filterTournament');
     const matchSelect = document.getElementById('matchTournament');
+    
+    // Limpiar opciones previas exceptuando la primera
+    select.innerHTML = '<option value="">Todos los torneos</option>';
+    matchSelect.innerHTML = '<option value="">Selecciona un torneo</option>';
 
-    tournaments.forEach(tournament => {
-        const option1 = document.createElement('option');
-        option1.value = tournament.id;
-        option1.textContent = tournament.name;
-        select.appendChild(option1);
-
-        const option2 = document.createElement('option');
-        option2.value = tournament.id;
-        option2.textContent = tournament.name;
-        matchSelect.appendChild(option2);
+    allTournaments.forEach(t => {
+        select.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        matchSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
     });
 }
 
 function loadTournamentTeams() {
     const tournamentId = parseInt(document.getElementById('matchTournament').value);
-    const tournament = db.getTournamentById(tournamentId);
-    
     const homeTeamSelect = document.getElementById('matchHomeTeam');
     const awayTeamSelect = document.getElementById('matchAwayTeam');
     
     homeTeamSelect.innerHTML = '<option value="">Selecciona un equipo</option>';
     awayTeamSelect.innerHTML = '<option value="">Selecciona un equipo</option>';
 
-    if (!tournament || !tournament.teams || tournament.teams.length === 0) {
-        return;
-    }
+    // Filtramos los equipos que pertenecen a este torneo
+    const tournamentTeams = allTeams.filter(t => t.tournament === tournamentId || t.tournament_id === tournamentId);
 
-    tournament.teams.forEach(teamId => {
-        const team = db.getTeamById(teamId);
-        if (team) {
-            const option1 = document.createElement('option');
-            option1.value = team.id;
-            option1.textContent = team.name;
-            homeTeamSelect.appendChild(option1);
-
-            const option2 = document.createElement('option');
-            option2.value = team.id;
-            option2.textContent = team.name;
-            awayTeamSelect.appendChild(option2);
-        }
+    tournamentTeams.forEach(team => {
+        homeTeamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
+        awayTeamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
     });
-}
-
-function loadMatches() {
-    allMatches = db.getAllMatches();
-    displayMatches(allMatches);
 }
 
 function displayMatches(matches) {
@@ -235,28 +224,26 @@ function displayMatches(matches) {
         return;
     }
 
-    matches.sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time)).forEach(match => {
-        const tournament = db.getTournamentById(match.tournamentId);
-        const homeTeam = db.getTeamById(match.homeTeamId);
-        const awayTeam = db.getTeamById(match.awayTeamId);
+    matches.forEach(match => {
+        const tournament = allTournaments.find(t => t.id === match.tournament || t.id === match.tournament_id);
+        const homeTeam = allTeams.find(t => t.id === match.homeTeam || t.id === match.home_team);
+        const awayTeam = allTeams.find(t => t.id === match.awayTeam || t.id === match.away_team);
 
         const row = document.createElement('tr');
-        const resultText = match.homeScore !== null && match.awayScore !== null 
-            ? `${match.homeScore} - ${match.awayScore}` 
-            : '-';
+        const homeScore = match.homeScore ?? match.home_score;
+        const awayScore = match.awayScore ?? match.away_score;
+        const resultText = (homeScore !== null && awayScore !== null) ? `${homeScore} - ${awayScore}` : '-';
 
         row.innerHTML = `
-            <td>${tournament ? tournament.name : 'Torneo desconocido'}</td>
-            <td>${homeTeam ? homeTeam.name : 'Equipo desconocido'}</td>
-            <td>${awayTeam ? awayTeam.name : 'Equipo desconocido'}</td>
-            <td>${app.formatDate(match.date)} ${match.time}</td>
-            <td>${match.location}</td>
-            <td><span style="color: #f59e0b;">${match.status}</span></td>
+            <td>${tournament ? tournament.name : 'Desc'}</td>
+            <td>${homeTeam ? homeTeam.name : 'Desc'}</td>
+            <td>${awayTeam ? awayTeam.name : 'Desc'}</td>
+            <td>${app.formatDate(match.date)} ${match.time ? match.time.substring(0,5) : ''}</td>
+            <td>${match.location || ''}</td>
+            <td><span style="color: #f59e0b;">${match.status || 'scheduled'}</span></td>
             <td>${resultText}</td>
             <td>
-                ${app.isOrganizer() ? `
-                    <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="editMatch(${match.id})">Editar</button>
-                ` : ''}
+                ${app.isOrganizer() || app.isAdmin() ? `<button class="btn btn-secondary" style="padding: 5px 10px;" onclick="editMatch(${match.id})">Editar</button>` : ''}
             </td>
         `;
         tbody.appendChild(row);
@@ -267,85 +254,74 @@ function openCreateModal() {
     currentEditingMatchId = null;
     document.getElementById('modalTitle').textContent = 'Crear Partido';
     document.getElementById('matchForm').reset();
-    document.getElementById('matchTournament').value = '';
     document.getElementById('matchHomeTeam').innerHTML = '<option value="">Selecciona un equipo</option>';
     document.getElementById('matchAwayTeam').innerHTML = '<option value="">Selecciona un equipo</option>';
     app.showModal('matchModal');
 }
 
-function editMatch(matchId) {
-    const match = db.getMatchById(matchId);
+async function editMatch(matchId) {
+    const match = allMatches.find(m => m.id === matchId);
     if (!match) return;
 
     currentEditingMatchId = matchId;
     document.getElementById('modalTitle').textContent = 'Editar Partido';
-    document.getElementById('matchTournament').value = match.tournamentId;
+    document.getElementById('matchTournament').value = match.tournament || match.tournament_id;
     loadTournamentTeams();
 
     setTimeout(() => {
-        document.getElementById('matchHomeTeam').value = match.homeTeamId;
-        document.getElementById('matchAwayTeam').value = match.awayTeamId;
+        document.getElementById('matchHomeTeam').value = match.homeTeam || match.home_team;
+        document.getElementById('matchAwayTeam').value = match.awayTeam || match.away_team;
     }, 100);
 
     document.getElementById('matchDate').value = match.date;
     document.getElementById('matchTime').value = match.time;
     document.getElementById('matchLocation').value = match.location;
-
     app.showModal('matchModal');
 }
 
-function saveMatch(e) {
+async function saveMatch(e) {
     e.preventDefault();
 
     const data = {
-        tournamentId: parseInt(document.getElementById('matchTournament').value),
-        homeTeamId: parseInt(document.getElementById('matchHomeTeam').value),
-        awayTeamId: parseInt(document.getElementById('matchAwayTeam').value),
+        tournament: parseInt(document.getElementById('matchTournament').value),
+        tournament_id: parseInt(document.getElementById('matchTournament').value),
+        home_team: parseInt(document.getElementById('matchHomeTeam').value),
+        away_team: parseInt(document.getElementById('matchAwayTeam').value),
         date: document.getElementById('matchDate').value,
         time: document.getElementById('matchTime').value,
-        location: document.getElementById('matchLocation').value
+        location: document.getElementById('matchLocation').value,
+        status: 'scheduled'
     };
 
-    if (data.homeTeamId === data.awayTeamId) {
+    if (data.home_team === data.away_team) {
         app.showAlert('El equipo local y visitante deben ser diferentes', 'danger');
         return;
     }
 
-    let result;
-    if (currentEditingMatchId) {
-        result = db.updateMatch(currentEditingMatchId, data);
-    } else {
-        result = db.createMatch(data);
-    }
-
-    if (result.success) {
-        app.showAlert(result.message, 'success');
+    try {
+        if (currentEditingMatchId) {
+            await app.fetchAPI(`/matches/${currentEditingMatchId}/`, { method: 'PUT', body: JSON.stringify(data) });
+        } else {
+            await app.fetchAPI('/matches/', { method: 'POST', body: JSON.stringify(data) });
+        }
+        app.showAlert('Partido guardado', 'success');
         app.closeModal('matchModal');
-        loadMatches();
-    } else {
-        app.showAlert(result.message, 'danger');
+        loadInitialData(); // Recarga todo
+    } catch (error) {
+        app.showAlert('Error al guardar el partido', 'danger');
     }
 }
 
 function filterMatches() {
-    const tournamentFilter = parseInt(document.getElementById('filterTournament').value);
-    const statusFilter = document.getElementById('filterStatus').value;
+    const tFilter = parseInt(document.getElementById('filterTournament').value);
+    const sFilter = document.getElementById('filterStatus').value;
 
     const filtered = allMatches.filter(match => {
-        const tournamentMatch = !tournamentFilter || match.tournamentId === tournamentFilter;
-        const statusMatch = !statusFilter || match.status === statusFilter;
+        const tournamentMatch = !tFilter || match.tournament === tFilter || match.tournament_id === tFilter;
+        const statusMatch = !sFilter || match.status === sFilter;
         return tournamentMatch && statusMatch;
     });
-
     displayMatches(filtered);
-}
-
-// Add helper method to database
-if (!db.getMatchById) {
-    db.getMatchById = function(matchId) {
-        const matches = JSON.parse(localStorage.getItem('matches'));
-        return matches.find(m => m.id === matchId);
-    }
 }
 </script>
 

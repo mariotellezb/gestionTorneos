@@ -1,9 +1,37 @@
-// ======================== APPLICATION UTILITIES ========================
+// ======================== APPLICATION UTILITIES (CONECTADA A DJANGO) ========================
+
+// URL base de tu API de Django
+var API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 class App {
     constructor() {
         this.currentPage = '';
-        this.currentUser = db.getCurrentUser();
+        this.currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    }
+
+    // ======================== API HELPER ========================
+    // Función centralizada para hacer peticiones a Django
+    async fetchAPI(endpoint, options = {}) {
+        const url = `${API_BASE_URL}${endpoint}`;
+        const defaultOptions = {
+            headers: {
+                'Content-Type': 'application/json',
+                // Aquí iría el Token de Auth en el futuro
+            }
+        };
+
+        try {
+            const response = await fetch(url, { ...defaultOptions, ...options });
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            // Si la respuesta no tiene contenido (ej. un DELETE exitoso), devolvemos null
+            if (response.status === 204) return null;
+            return await response.json();
+        } catch (error) {
+            console.error(`Error en la petición a ${endpoint}:`, error);
+            throw error;
+        }
     }
 
     // ======================== NAVIGATION ========================
@@ -37,7 +65,7 @@ class App {
 
     // ======================== AUTHENTICATION ========================
     checkAuth() {
-        const currentUser = db.getCurrentUser();
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
         if (!currentUser) {
             window.location.href = 'login.html';
             return false;
@@ -48,7 +76,8 @@ class App {
 
     logout() {
         if (confirm('¿Deseas cerrar sesión?')) {
-            db.logoutUser();
+            // Limpiamos la sesión local
+            localStorage.removeItem('currentUser');
             window.location.href = 'index.html';
         }
     }
@@ -108,11 +137,13 @@ class App {
 
     // ======================== FORMATTING ========================
     formatDate(dateString) {
+        if (!dateString) return 'Fecha no disponible';
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
         return new Date(dateString).toLocaleDateString('es-ES', options);
     }
 
     formatDateTime(dateString) {
+        if (!dateString) return 'Fecha no disponible';
         return this.formatDate(dateString) + ' ' + new Date(dateString).toLocaleTimeString('es-ES');
     }
 
@@ -134,67 +165,55 @@ class App {
         }
     }
 
-    // ======================== USER HELPERS ========================
-    getUserName(userId) {
-        const user = db.getUserById(userId);
-        return user ? user.name : 'Usuario desconocido';
+    // ======================== ASYNC DATA HELPERS ========================
+    // Nota: Estas funciones ahora son asíncronas porque consultan a Django
+    
+    async getTournamentName(tournamentId) {
+        try {
+            const tournament = await this.fetchAPI(`/tournaments/${tournamentId}/`);
+            return tournament ? tournament.name : 'Torneo desconocido';
+        } catch (error) {
+            return 'Torneo desconocido';
+        }
     }
 
-    getTeamName(teamId) {
-        const team = db.getTeamById(teamId);
-        return team ? team.name : 'Equipo desconocido';
-    }
-
-    getTournamentName(tournamentId) {
-        const tournament = db.getTournamentById(tournamentId);
-        return tournament ? tournament.name : 'Torneo desconocido';
-    }
-
-    // ======================== PERMISSION CHECKS ========================
-    canEditTournament(tournamentId) {
-        if (this.isAdmin()) return true;
-        const tournament = db.getTournamentById(tournamentId);
-        return tournament && tournament.organizerId === this.currentUser.id;
-    }
-
-    canEditTeam(teamId) {
-        if (this.isAdmin()) return true;
-        const team = db.getTeamById(teamId);
-        return team && team.captainId === this.currentUser.id;
-    }
-
-    // ======================== TOURNAMENT ACTIONS ========================
-    joinTournament() {
+    // ======================== TOURNAMENT ACTIONS (CONECTADO A DJANGO) ========================
+    async joinTournament() {
         if (!this.currentUser) {
             this.showAlert('Debes iniciar sesión para unirte a un torneo', 'warning');
             return;
         }
         
-        // Load available tournaments into the select
-        const tournaments = db.getAllTournaments().filter(t => t.status === 'active');
-        const select = document.getElementById('joinTournamentSelect');
-        
-        if (select) {
-            select.innerHTML = '<option value="">-- Selecciona un torneo --</option>';
-            tournaments.forEach(t => {
-                const option = document.createElement('option');
-                option.value = t.id;
-                option.textContent = `${t.name} (${t.sport}) - ${t.location}`;
-                select.appendChild(option);
-            });
+        try {
+            // Pedimos los torneos reales a Django
+            const allTournaments = await this.fetchAPI('/tournaments/');
+            const tournaments = allTournaments.filter(t => t.status === 'active');
             
-            if (tournaments.length === 0) {
-                select.innerHTML = '<option value="">No hay tournaments disponibles</option>';
-                this.showAlert('No hay tournaments activos en este momento', 'info');
-                return;
+            const select = document.getElementById('joinTournamentSelect');
+            
+            if (select) {
+                select.innerHTML = '<option value="">-- Selecciona un torneo --</option>';
+                tournaments.forEach(t => {
+                    const option = document.createElement('option');
+                    option.value = t.id;
+                    option.textContent = `${t.name} (${t.sport}) - ${t.location}`;
+                    select.appendChild(option);
+                });
+                
+                if (tournaments.length === 0) {
+                    select.innerHTML = '<option value="">No hay torneos disponibles</option>';
+                    this.showAlert('No hay torneos activos en este momento', 'info');
+                    return;
+                }
             }
+            
+            this.showModal('joinTournamentModal');
+        } catch (error) {
+            this.showAlert('Error al cargar la lista de torneos del servidor', 'danger');
         }
-        
-        // Show the modal
-        this.showModal('joinTournamentModal');
     }
     
-    submitJoinRequest(e) {
+    async submitJoinRequest(e) {
         e.preventDefault();
         
         const tournamentId = parseInt(document.getElementById('joinTournamentSelect').value);
@@ -209,23 +228,24 @@ class App {
             return;
         }
         
-        const tournament = db.getTournamentById(tournamentId);
-        
-        // Create the request with full participant info
-        const result = db.requestJoinTournamentWithDetails(tournamentId, this.currentUser.id, {
-            teamName,
-            captainName,
-            phone,
-            email,
-            notes
-        });
-        
-        if (result.success) {
-            this.showAlert('Solicitud enviada al creador del torneo. Te notificaremos cuando sea aprobada.', 'success');
-            this.closeModal('joinTournamentModal');
-            document.getElementById('joinTournamentForm').reset();
-        } else {
-            this.showAlert(result.message, 'danger');
+        try {
+            // Simulamos el envío por ahora. 
+            // FUTURO: await this.fetchAPI('/requests/', { method: 'POST', body: JSON.stringify({...}) });
+            
+            // Usamos el fallback local temporalmente para no romper la UI
+            const result = db.requestJoinTournamentWithDetails(tournamentId, this.currentUser.id, {
+                teamName, captainName, phone, email, notes
+            });
+            
+            if (result.success) {
+                this.showAlert('Solicitud enviada al creador del torneo. Te notificaremos cuando sea aprobada.', 'success');
+                this.closeModal('joinTournamentModal');
+                document.getElementById('joinTournamentForm').reset();
+            } else {
+                this.showAlert(result.message, 'danger');
+            }
+        } catch (error) {
+            this.showAlert('Error al enviar la solicitud', 'danger');
         }
     }
 
@@ -235,20 +255,18 @@ class App {
             return;
         }
         
-        // Check if user has permission to create tournament
         if (!this.canCreateTournament()) {
-            // Grant creator role to user
-            db.updateUser(this.currentUser.id, { role: 'creador' });
+            // Actualizamos en local storage por ahora
             this.currentUser.role = 'creador';
             localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
             this.showAlert('¡Ahora tienes permisos para crear torneos!', 'success');
         }
         
-        // Redirect to tournaments page to create
         window.location.href = 'torneos.html?action=create';
     }
 
-    // ======================== NOTIFICATIONS ========================
+    // ======================== NOTIFICATIONS (MANTENIDO LOCAL TEMPORALMENTE) ========================
+    // Nota: Mantenemos db.algo() aquí temporalmente hasta crear los modelos de Django
     toggleNotifications() {
         const dropdown = document.getElementById('notificationsDropdown');
         if (dropdown) {
@@ -258,7 +276,7 @@ class App {
     }
 
     loadNotifications() {
-        if (!this.currentUser) return;
+        if (!this.currentUser || typeof db === 'undefined') return;
         
         const notifications = db.getNotifications(this.currentUser.id);
         const notificationsList = document.getElementById('notificationsList');
@@ -303,13 +321,12 @@ class App {
     }
 
     handleNotificationClick(notificationId, type, tournamentId, requestId) {
-        // Mark as read
-        db.markNotificationAsRead(notificationId);
+        if (typeof db !== 'undefined') {
+            db.markNotificationAsRead(notificationId);
+        }
         this.loadNotifications();
         
-        // Handle different notification types
         if (type === 'join_request' && tournamentId) {
-            // Show requests for this tournament
             window.location.href = `torneos.html?tournament=${tournamentId}&view=requests`;
         } else if (tournamentId) {
             window.location.href = `torneos.html?tournament=${tournamentId}`;
@@ -317,15 +334,14 @@ class App {
     }
 
     markAllNotificationsRead() {
-        if (!this.currentUser) return;
+        if (!this.currentUser || typeof db === 'undefined') return;
         db.markAllNotificationsAsRead(this.currentUser.id);
         this.loadNotifications();
     }
 
-    // ======================== TOURNAMENT REQUESTS ========================
+    // ======================== TOURNAMENT REQUESTS (MANTENIDO LOCAL TEMPORALMENTE) ========================
     showJoinRequestModal(tournamentId) {
-        const tournament = db.getTournamentById(tournamentId);
-        if (!tournament) return;
+        if (typeof db === 'undefined') return;
         
         const teamName = prompt('Ingresa el nombre de tu equipo para unirte al torneo:');
         if (!teamName) return;
@@ -339,10 +355,11 @@ class App {
     }
 
     respondToRequest(requestId, accepted) {
+        if (typeof db === 'undefined') return;
+        
         const result = db.respondToTournamentRequest(requestId, accepted);
         if (result.success) {
             this.showAlert(result.message, 'success');
-            // Refresh the requests list
             this.loadTournamentRequests();
         } else {
             this.showAlert(result.message, 'danger');
@@ -354,8 +371,7 @@ class App {
     }
 }
 
-// Create global app instance
-const app = new App();
+window.app = new App();
 
 // Initialize app when page loads
 document.addEventListener('DOMContentLoaded', () => {

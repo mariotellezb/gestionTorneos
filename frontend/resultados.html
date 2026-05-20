@@ -99,58 +99,50 @@
     </div>
 </div>
 
-<script src="js/db.js"></script>
 <script src="js/app.js"></script>
 <script>
 let allMatches = [];
+let allTournaments = [];
+let allTeams = [];
 
-document.addEventListener('DOMContentLoaded', function() {
-    app.checkAuth();
+document.addEventListener('DOMContentLoaded', async function() {
+    if (!app.checkAuth()) return;
     
-    const currentUser = db.getCurrentUser();
+    const currentUser = app.currentUser;
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role}`;
-
-        if (app.isAdmin()) {
-            document.getElementById('adminLink').style.display = 'block';
-        }
+        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
+        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
+        if (app.isAdmin()) document.getElementById('adminLink').style.display = 'block';
     }
 
-    loadTournaments();
-    loadTeams();
-    loadResults();
-    loadStandings();
+    await loadInitialData();
     app.initializeNavigation();
 });
 
-function loadTournaments() {
-    const tournaments = db.getAllTournaments();
-    const select = document.getElementById('filterTournament');
-
-    tournaments.forEach(tournament => {
-        const option = document.createElement('option');
-        option.value = tournament.id;
-        option.textContent = tournament.name;
-        select.appendChild(option);
-    });
+async function loadInitialData() {
+    try {
+        [allTournaments, allTeams, allMatches] = await Promise.all([
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/teams/'),
+            app.fetchAPI('/matches/')
+        ]);
+        
+        populateFilters();
+        // Filtramos para mostrar solo los partidos jugados o que ya tienen score
+        const playedMatches = allMatches.filter(m => m.status === 'played' || m.home_score !== null);
+        displayResults(playedMatches);
+        loadStandings();
+    } catch (error) {
+        app.showAlert('Error al cargar datos', 'danger');
+    }
 }
 
-function loadTeams() {
-    const teams = db.getAllTeams();
-    const select = document.getElementById('filterTeam');
-
-    teams.forEach(team => {
-        const option = document.createElement('option');
-        option.value = team.id;
-        option.textContent = team.name;
-        select.appendChild(option);
-    });
-}
-
-function loadResults() {
-    allMatches = db.getAllMatches().filter(m => m.status === 'played' || (m.homeScore !== null && m.awayScore !== null));
-    displayResults(allMatches);
+function populateFilters() {
+    const tSelect = document.getElementById('filterTournament');
+    const teamSelect = document.getElementById('filterTeam');
+    
+    allTournaments.forEach(t => tSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
+    allTeams.forEach(t => teamSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`);
 }
 
 function displayResults(matches) {
@@ -162,25 +154,25 @@ function displayResults(matches) {
         return;
     }
 
-    matches.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach(match => {
-        const tournament = db.getTournamentById(match.tournamentId);
-        const homeTeam = db.getTeamById(match.homeTeamId);
-        const awayTeam = db.getTeamById(match.awayTeamId);
+    matches.forEach(match => {
+        const tournament = allTournaments.find(t => t.id === match.tournament || t.id === match.tournament_id);
+        const homeTeam = allTeams.find(t => t.id === match.homeTeam || t.id === match.home_team);
+        const awayTeam = allTeams.find(t => t.id === match.awayTeam || t.id === match.away_team);
 
         const row = document.createElement('tr');
-        const resultText = match.homeScore !== null && match.awayScore !== null 
-            ? `${match.homeScore} - ${match.awayScore}` 
-            : 'Pendiente';
+        const hScore = match.homeScore ?? match.home_score;
+        const aScore = match.awayScore ?? match.away_score;
+        const resultText = (hScore !== null && aScore !== null) ? `${hScore} - ${aScore}` : 'Pendiente';
 
         row.innerHTML = `
-            <td>${tournament ? tournament.name : 'Torneo desconocido'}</td>
-            <td>${homeTeam ? homeTeam.name : 'Equipo desconocido'}</td>
+            <td>${tournament ? tournament.name : 'Desc'}</td>
+            <td>${homeTeam ? homeTeam.name : 'Desc'}</td>
             <td style="font-weight: bold; font-size: 16px;">${resultText}</td>
-            <td>${awayTeam ? awayTeam.name : 'Equipo desconocido'}</td>
+            <td>${awayTeam ? awayTeam.name : 'Desc'}</td>
             <td>${app.formatDate(match.date)}</td>
-            <td>${match.location}</td>
+            <td>${match.location || ''}</td>
             <td>
-                ${app.isOrganizer() && (match.homeScore === null || match.awayScore === null) ? `
+                ${(app.isOrganizer() || app.isAdmin()) ? `
                     <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="editResult(${match.id})">Registrar</button>
                 ` : ''}
             </td>
@@ -190,12 +182,15 @@ function displayResults(matches) {
 }
 
 function editResult(matchId) {
-    const match = db.getAllMatches().find(m => m.id === matchId);
+    const match = allMatches.find(m => m.id === matchId);
     if (!match) return;
 
-    const tournament = db.getTournamentById(match.tournamentId);
-    const homeTeam = db.getTeamById(match.homeTeamId);
-    const awayTeam = db.getTeamById(match.awayTeamId);
+    const tournament = allTournaments.find(t => t.id === (match.tournament || match.tournament_id));
+    const homeTeam = allTeams.find(t => t.id === (match.homeTeam || match.home_team));
+    const awayTeam = allTeams.find(t => t.id === (match.awayTeam || match.away_team));
+
+    const hScore = match.homeScore ?? match.home_score ?? '';
+    const aScore = match.awayScore ?? match.away_score ?? '';
 
     let modalHTML = `
         <form onsubmit="saveResult(event, ${matchId})">
@@ -206,11 +201,11 @@ function editResult(matchId) {
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div class="form-group">
                     <label>${homeTeam.name}</label>
-                    <input type="number" id="homeScore" min="0" value="${match.homeScore || ''}" required>
+                    <input type="number" id="homeScore" min="0" value="${hScore}" required>
                 </div>
                 <div class="form-group">
                     <label>${awayTeam.name}</label>
-                    <input type="number" id="awayScore" min="0" value="${match.awayScore || ''}" required>
+                    <input type="number" id="awayScore" min="0" value="${aScore}" required>
                 </div>
             </div>
             <div class="btn-group">
@@ -219,39 +214,37 @@ function editResult(matchId) {
             </div>
         </form>
     `;
-
     document.getElementById('resultModalContent').innerHTML = modalHTML;
     app.showModal('resultModal');
 }
 
-function saveResult(e, matchId) {
+async function saveResult(e, matchId) {
     e.preventDefault();
+    const match = allMatches.find(m => m.id === matchId);
 
-    const homeScore = parseInt(document.getElementById('homeScore').value);
-    const awayScore = parseInt(document.getElementById('awayScore').value);
-
-    const result = db.updateMatch(matchId, {
-        homeScore: homeScore,
-        awayScore: awayScore,
+    // Mantenemos los datos originales del partido, solo actualizamos score
+    const data = {
+        ...match, // Copia los datos para no borrar la fecha/equipos en el PUT
+        home_score: parseInt(document.getElementById('homeScore').value),
+        away_score: parseInt(document.getElementById('awayScore').value),
         status: 'played'
-    });
+    };
 
-    if (result.success) {
-        app.showAlert('Resultado guardado exitosamente', 'success');
+    try {
+        await app.fetchAPI(`/matches/${matchId}/`, { method: 'PUT', body: JSON.stringify(data) });
+        app.showAlert('Resultado guardado', 'success');
         app.closeModal('resultModal');
-        loadResults();
-        loadStandings();
-    } else {
-        app.showAlert(result.message, 'danger');
+        loadInitialData(); // Refresca las tablas y posiciones
+    } catch (error) {
+        app.showAlert('Error al guardar', 'danger');
     }
 }
 
 function loadStandings() {
-    const tournaments = db.getAllTournaments();
     const container = document.getElementById('standingsContainer');
     container.innerHTML = '';
 
-    tournaments.forEach(tournament => {
+    allTournaments.forEach(tournament => {
         const standings = calculateStandings(tournament.id);
         if (standings.length === 0) return;
 
@@ -260,30 +253,13 @@ function loadStandings() {
         card.innerHTML = `
             <h3>Posiciones - ${tournament.name}</h3>
             <table style="margin-top: 15px;">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Equipo</th>
-                        <th>PJ</th>
-                        <th>G</th>
-                        <th>E</th>
-                        <th>P</th>
-                        <th>GF</th>
-                        <th>GC</th>
-                        <th>Pts</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>Pts</th></tr></thead>
                 <tbody>
-                    ${standings.map((team, index) => `
+                    ${standings.map((team, i) => `
                         <tr>
-                            <td>${index + 1}</td>
-                            <td>${team.name}</td>
-                            <td>${team.played}</td>
-                            <td>${team.won}</td>
-                            <td>${team.drawn}</td>
-                            <td>${team.lost}</td>
-                            <td>${team.goalsFor}</td>
-                            <td>${team.goalsAgainst}</td>
+                            <td>${i + 1}</td><td>${team.name}</td><td>${team.played}</td>
+                            <td>${team.won}</td><td>${team.drawn}</td><td>${team.lost}</td>
+                            <td>${team.goalsFor}</td><td>${team.goalsAgainst}</td>
                             <td style="font-weight: bold; color: #38bdf8;">${team.points}</td>
                         </tr>
                     `).join('')}
@@ -294,79 +270,47 @@ function loadStandings() {
     });
 }
 
-function calculateStandings(tournamentId) {
-    const tournament = db.getTournamentById(tournamentId);
-    if (!tournament || !tournament.teams) return [];
-
+function calculateStandings(tId) {
     const standings = {};
+    const tTeams = allTeams.filter(t => t.tournament === tId || t.tournament_id === tId);
+    if(tTeams.length === 0) return [];
 
-    // Initialize standings for each team
-    tournament.teams.forEach(teamId => {
-        const team = db.getTeamById(teamId);
-        if (team) {
-            standings[teamId] = {
-                id: teamId,
-                name: team.name,
-                played: 0,
-                won: 0,
-                drawn: 0,
-                lost: 0,
-                goalsFor: 0,
-                goalsAgainst: 0,
-                points: 0
-            };
-        }
+    tTeams.forEach(team => {
+        standings[team.id] = { name: team.name, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
     });
 
-    // Calculate standings from matches
-    const matches = db.getMatchesByTournament(tournamentId)
-        .filter(m => m.homeScore !== null && m.awayScore !== null);
+    const tMatches = allMatches.filter(m => (m.tournament === tId || m.tournament_id === tId) && m.home_score !== null);
 
-    matches.forEach(match => {
-        if (!standings[match.homeTeamId] || !standings[match.awayTeamId]) return;
+    tMatches.forEach(m => {
+        const htId = m.homeTeam || m.home_team;
+        const atId = m.awayTeam || m.away_team;
+        const hScore = m.homeScore ?? m.home_score;
+        const aScore = m.awayScore ?? m.away_score;
 
-        standings[match.homeTeamId].played++;
-        standings[match.awayTeamId].played++;
+        if (!standings[htId] || !standings[atId]) return;
 
-        standings[match.homeTeamId].goalsFor += match.homeScore;
-        standings[match.homeTeamId].goalsAgainst += match.awayScore;
+        standings[htId].played++; standings[atId].played++;
+        standings[htId].goalsFor += hScore; standings[htId].goalsAgainst += aScore;
+        standings[atId].goalsFor += aScore; standings[atId].goalsAgainst += hScore;
 
-        standings[match.awayTeamId].goalsFor += match.awayScore;
-        standings[match.awayTeamId].goalsAgainst += match.homeScore;
-
-        if (match.homeScore > match.awayScore) {
-            standings[match.homeTeamId].won++;
-            standings[match.homeTeamId].points += 3;
-            standings[match.awayTeamId].lost++;
-        } else if (match.awayScore > match.homeScore) {
-            standings[match.awayTeamId].won++;
-            standings[match.awayTeamId].points += 3;
-            standings[match.homeTeamId].lost++;
-        } else {
-            standings[match.homeTeamId].drawn++;
-            standings[match.homeTeamId].points += 1;
-            standings[match.awayTeamId].drawn++;
-            standings[match.awayTeamId].points += 1;
-        }
+        if (hScore > aScore) { standings[htId].won++; standings[htId].points += 3; standings[atId].lost++; }
+        else if (aScore > hScore) { standings[atId].won++; standings[atId].points += 3; standings[htId].lost++; }
+        else { standings[htId].drawn++; standings[htId].points++; standings[atId].drawn++; standings[atId].points++; }
     });
 
-    // Sort by points (descending) and goal difference
-    return Object.values(standings).sort((a, b) => {
-        if (b.points !== a.points) return b.points - a.points;
-        return (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst);
-    });
+    return Object.values(standings).sort((a, b) => (b.points !== a.points) ? b.points - a.points : (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst));
 }
 
 function filterResults() {
-    const tournamentFilter = parseInt(document.getElementById('filterTournament').value);
+    const tFilter = parseInt(document.getElementById('filterTournament').value);
     const teamFilter = parseInt(document.getElementById('filterTeam').value);
 
-    const filtered = allMatches.filter(match => {
-        const tournamentMatch = !tournamentFilter || match.tournamentId === tournamentFilter;
-        const teamMatch = !teamFilter || match.homeTeamId === teamFilter || match.awayTeamId === teamFilter;
-        return tournamentMatch && teamMatch;
+    const filtered = allMatches.filter(m => {
+        const isPlayed = m.status === 'played' || m.home_score !== null;
+        const tournamentMatch = !tFilter || m.tournament === tFilter || m.tournament_id === tFilter;
+        const teamMatch = !teamFilter || m.home_team === teamFilter || m.away_team === teamFilter;
+        return isPlayed && tournamentMatch && teamMatch;
     });
-
     displayResults(filtered);
 }
 </script>

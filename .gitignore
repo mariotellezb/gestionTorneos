@@ -1,0 +1,11 @@
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Archivos de caché de Python
+__pycache__/
+*.pyc
+
+# Base de datos local (si la llegaste a usar en Django)
+db.sqlite3
