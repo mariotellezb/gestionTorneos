@@ -73,10 +73,17 @@ if (signupForm) {
             const data = await response.json();
 
             if (data.success) {
-                showAuthAlert("¡Registro exitoso! Redirigiendo a iniciar sesión...", "success");
+                // Guardamos al usuario para tu interfaz
+                localStorage.setItem("currentUser", JSON.stringify(data.user));
+                
+                // ¡NUEVO: Guardamos las llaves de seguridad!
+                localStorage.setItem("accessToken", data.access);
+                localStorage.setItem("refreshToken", data.refresh);
+
+                showAuthAlert("¡Bienvenido! Redirigiendo...", "success");
                 setTimeout(() => {
-                    window.location.href = "login.html";
-                }, 1500);
+                    window.location.href = "dashboard.html";
+                }, 1000);
             } else {
                 showAuthAlert(data.message, "danger");
             }

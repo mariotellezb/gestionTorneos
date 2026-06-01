@@ -9,29 +9,61 @@ class App {
         this.currentUser = JSON.parse(localStorage.getItem('currentUser'));
     }
 
-    // ======================== API HELPER ========================
-    // Función centralizada para hacer peticiones a Django
+    // ==========================================
+    // CONEXIÓN A LA API CON SEGURIDAD JWT
+    // ==========================================
     async fetchAPI(endpoint, options = {}) {
         const url = `${API_BASE_URL}${endpoint}`;
-        const defaultOptions = {
-            headers: {
-                'Content-Type': 'application/json',
-                // Aquí iría el Token de Auth en el futuro
-            }
+        
+        // 1. Buscamos la llave en el bolsillo del navegador
+        const token = localStorage.getItem("accessToken");
+
+        const headers = {
+            'Content-Type': 'application/json',
+            ...(options.headers || {})
         };
 
+        // 2. Si tenemos la llave, se la pegamos a la petición
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+
         try {
-            const response = await fetch(url, { ...defaultOptions, ...options });
-            if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
+            const response = await fetch(url, {
+                ...options,
+                headers
+            });
+
+            // 3. Si el guardia de Django nos dice que la llave caducó (Error 401)
+            if (response.status === 401) {
+                console.error("La sesión ha expirado o el token es inválido.");
+                this.logout(); // Expulsamos al usuario por seguridad
+                throw new Error("Sesión expirada");
             }
-            // Si la respuesta no tiene contenido (ej. un DELETE exitoso), devolvemos null
-            if (response.status === 204) return null;
+
+            // Si es un DELETE que no devuelve contenido (204 No Content), no intentamos leer el JSON
+            if (response.status === 204) {
+                return null; 
+            }
+
             return await response.json();
+            
         } catch (error) {
-            console.error(`Error en la petición a ${endpoint}:`, error);
+            console.error(`Error en fetchAPI (${endpoint}):`, error);
             throw error;
         }
+    }
+
+    // ==========================================
+    // CERRAR SESIÓN (DESTRUIR LLAVES)
+    // ==========================================
+    logout() {
+        // Borramos todo rastro del usuario y sus llaves por seguridad
+        localStorage.removeItem("currentUser");
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        
+        window.location.href = "login.html";
     }
 
     // ======================== NAVIGATION ========================

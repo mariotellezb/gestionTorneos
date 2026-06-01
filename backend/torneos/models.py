@@ -1,5 +1,7 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import User
 
 # 1. USUARIOS (Sustituye a tu localStorage 'users')
 class CustomUser(AbstractUser):
@@ -71,3 +73,26 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.homeTeam} vs {self.awayTeam} - {self.tournament}"
+    
+class TournamentRequest(models.Model):
+    # 1. Las opciones deben ir PRIMERO, adentro de la clase
+    STATUS_CHOICES = [
+        ('pending', 'Pendiente'),
+        ('accepted', 'Aceptado'),
+        ('rejected', 'Rechazado'),
+    ]
+
+    # 2. Los campos van DESPUÉS, con la misma alineación
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name='requests')
+    team_name = models.CharField(max_length=100)
+    captain_name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=20)
+    email = models.EmailField()
+    notes = models.TextField(blank=True, null=True)
+    
+    # Aquí es donde usa STATUS_CHOICES de manera segura
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.team_name} -> {self.tournament.name} ({self.status})"

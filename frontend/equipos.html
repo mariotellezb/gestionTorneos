@@ -37,7 +37,6 @@
     <div class="main-content">
         <div class="header">
             <h1>Gestión de Equipos</h1>
-            <button id="createTeamBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Equipo</button>
         </div>
 
         <div class="content">
@@ -142,40 +141,60 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 async function loadTeams() {
     try {
-        const teams = await app.fetchAPI('/teams/');
-        const tbody = document.getElementById('teamsTable');
-        tbody.innerHTML = '';
+        // Obtenemos todo
+        const [tournaments, teams] = await Promise.all([
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/teams/')
+        ]);
 
-        if (teams.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #cbd5e1;">No hay equipos registrados</td></tr>';
-            return;
+        // Asegúrate de que el contenedor de la lista en tu equipos.html tenga id="teamsContainer"
+        const container = document.getElementById('teamsContainer'); 
+        if (!container) return;
+
+        let html = '';
+
+        tournaments.forEach(tournament => {
+            // Buscamos los equipos cuyo ID esté dentro del arreglo tournament.teams
+            const tournamentTeams = teams.filter(team => {
+                return tournament.teams && tournament.teams.includes(team.id);
+            });
+
+            // Solo dibujamos la sección si el torneo tiene equipos
+            if (tournamentTeams.length > 0) {
+                html += `
+                <div style="margin-bottom: 30px; background: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #334155;">
+                    <h3 style="color: #f59e0b; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #475569; padding-bottom: 10px;">
+                        🏆 Torneo: ${tournament.name}
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                `;
+
+                // Dibujamos cada equipo como una tarjeta bonita dentro de su torneo
+                tournamentTeams.forEach(team => {
+                    const totalJugadores = (team.members ? team.members.length : 0) + (team.captain ? 1 : 0);
+                    html += `
+                        <div style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #38bdf8;">
+                            <strong style="color: #fff; font-size: 16px;">🛡️ ${team.name}</strong>
+                            <p style="color: #94a3b8; font-size: 13px; margin: 5px 0 0 0;">👥 ${totalJugadores} Jugador(es)</p>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    </div>
+                </div>`;
+            }
+        });
+
+        // Mensaje por si todos los torneos están vacíos
+        if (html === '') {
+            html = '<div style="text-align: center; padding: 20px; color: #94a3b8; background: #1e293b; border-radius: 8px; border: 1px dashed #475569;">No hay equipos registrados en ningún torneo todavía.</div>';
         }
 
-        teams.forEach(team => {
-            const row = document.createElement('tr');
-            // Mapeo seguro para capitán (DRF puede devolver captain o captain_id)
-            const captainId = team.captain || team.captain_id || team.captainId;
-            const isCaptainOrAdmin = app.currentUser.id === captainId || app.isAdmin();
-            
-            row.innerHTML = `
-                <td>${team.name}</td>
-                <td>${team.description}</td>
-                <td>ID Capitán: ${captainId}</td>
-                <td>${team.members ? team.members.length : 0}</td>
-                <td>${app.formatDate(team.created_at || team.registeredDate)}</td>
-                <td>
-                    <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="viewTeamDetails(${team.id})">Ver</button>
-                    ${isCaptainOrAdmin ? `
-                        <button class="btn btn-warning" style="padding: 5px 10px;" onclick="editTeam(${team.id})">Editar</button>
-                        <button class="btn btn-danger" style="padding: 5px 10px;" onclick="deleteTeam(${team.id})">Eliminar</button>
-                    ` : ''}
-                </td>
-            `;
-            tbody.appendChild(row);
-        });
+        container.innerHTML = html;
+
     } catch (error) {
-        console.error("Error cargando equipos:", error);
-        app.showAlert('Error al cargar equipos', 'danger');
+        console.error("Error al cargar la lista clasificada de equipos:", error);
     }
 }
 
@@ -234,7 +253,7 @@ async function deleteTeam(teamId) {
     }
 }
 
-async function viewTeamDetails(teamId) {
+async function viewTeamDetails(teamId) {        
     try {
         const team = await app.fetchAPI(`/teams/${teamId}/`);
         const captainId = team.captain || team.captain_id || team.captainId;
@@ -277,6 +296,30 @@ function filterTeams() {
         row.style.display = row.textContent.toLowerCase().includes(searchValue) ? '' : 'none';
     });
 }
+
+async function joinTeam(teamId) {
+    if (!confirm('¿Estás seguro de que deseas unirte a este equipo?')) return;
+    
+    try {
+        // Hacemos la petición al nuevo endpoint que creamos en Django
+        await app.fetchAPI(`/teams/${teamId}/join/`, {
+            method: 'POST',
+            body: JSON.stringify({}) // No necesitamos enviar datos, Django sabe quién eres por tu token
+        });
+        
+        app.showAlert('¡Bienvenido al equipo! Ya eres miembro oficial.', 'success');
+        
+        // Recargamos la pantalla para que desaparezca el botón de "Unirse"
+        if (typeof loadTournaments === 'function') loadTournaments();
+        if (typeof loadTeams === 'function') loadTeams();
+        app.closeModal('detailsModal'); // Si estabas viendo los detalles, cerramos la ventana
+        
+    } catch (error) {
+        console.error("Error al unirse:", error);
+        app.showAlert('No se pudo unir al equipo. Verifica si ya eres miembro.', 'danger');
+    }
+}
+
 </script>
 
 <!-- Footer -->

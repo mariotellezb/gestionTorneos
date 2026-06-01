@@ -128,3 +128,16 @@ AUTH_USER_MODEL = 'torneos.CustomUser'
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True # Agrega esta línea también por si acaso
+
+# ==========================================
+# CONFIGURACIÓN DE SEGURIDAD (DRF Y JWT)
+# ==========================================
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    # Si quieres que todo sea privado por defecto, descomenta las siguientes 2 líneas:
+    # 'DEFAULT_PERMISSION_CLASSES': (
+    #     'rest_framework.permissions.IsAuthenticated',
+    # )
+}

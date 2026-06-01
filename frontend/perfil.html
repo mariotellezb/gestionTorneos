@@ -254,6 +254,94 @@ function renderUserMatches(matches, teamIds, tournaments, teams) {
             </tr>`;
     });
 }
+
+async function loadMyTeams() {
+    const currentUser = app.currentUser;
+    if (!currentUser) return;
+
+    try {
+        const allTeams = await app.fetchAPI('/teams/');
+        
+        // Filtramos: ¿Soy capitán o estoy en la lista de miembros?
+        const myTeams = allTeams.filter(team => 
+            team.captain === currentUser.id || 
+            team.captain_id === currentUser.id || 
+            (team.members && team.members.includes(currentUser.id))
+        );
+
+        const container = document.getElementById('myTeamsContainer'); // Asegúrate de tener este div en tu HTML
+        
+        if (myTeams.length === 0) {
+            container.innerHTML = '<p>Aún no perteneces a ningún equipo.</p>';
+            return;
+        }
+
+        container.innerHTML = myTeams.map(team => `
+            <div style="background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                <h4 style="color: #38bdf8; margin: 0 0 5px 0;">${team.name}</h4>
+                <p style="margin: 0; font-size: 14px; color: #94a3b8;">
+                    Rol: ${(team.captain === currentUser.id || team.captain_id === currentUser.id) ? 'Capitán 👑' : 'Jugador 🏃'}
+                </p>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error("Error al cargar mis equipos:", error);
+    }
+}
+
+// Agrega esto en tu perfil.html o app.js
+async function loadMyProfileTeams() {
+    const currentUser = app.currentUser;
+    if (!currentUser) return;
+
+    try {
+        // Pedimos todos los equipos y todos los torneos
+        const [allTeams, allTournaments] = await Promise.all([
+            app.fetchAPI('/teams/'),
+            app.fetchAPI('/tournaments/')
+        ]);
+
+        // Filtramos: ¿Soy el capitán o mi ID está en la lista de 'members'?
+        const misEquipos = allTeams.filter(team => {
+            const isCaptain = team.captain === currentUser.id || team.captain_id === currentUser.id;
+            const isMember = team.members && team.members.includes(currentUser.id);
+            return isCaptain || isMember;
+        });
+
+        const container = document.getElementById('myTeamsContainer'); 
+        if (!container) return; // Si no existe el div, ignoramos
+
+        if (misEquipos.length === 0) {
+            container.innerHTML = '<p style="color: #94a3b8;">Aún no perteneces a ningún equipo.</p>';
+            return;
+        }
+
+        let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+        misEquipos.forEach(team => {
+            // Buscamos en qué torneo está inscrito este equipo
+            const torneo = allTournaments.find(t => t.teams && t.teams.includes(team.id));
+            const nombreTorneo = torneo ? torneo.name : 'Sin torneo asignado';
+            const rol = (team.captain === currentUser.id || team.captain_id === currentUser.id) ? '👑 Capitán' : '🏃 Jugador';
+
+            html += `
+            <div style="background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155;">
+                <h4 style="color: #38bdf8; margin-top: 0; margin-bottom: 5px;">${team.name}</h4>
+                <p style="margin: 0; color: #94a3b8; font-size: 14px;"><strong>Torneo:</strong> ${nombreTorneo}</p>
+                <p style="margin: 0; color: #10b981; font-size: 14px;"><strong>Mi Rol:</strong> ${rol}</p>
+            </div>`;
+        });
+        html += '</div>';
+        
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error("Error al cargar mis equipos en el perfil:", error);
+    }
+}
+
+
+
 </script>
 
 <!-- Footer -->

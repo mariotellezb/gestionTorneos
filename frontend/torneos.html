@@ -206,9 +206,8 @@
         </form>
     </div>
 </div>
-<script src="js/db.js"></script>
-<script src="js/app.js"></script>
 
+<script src="js/app.js"></script>
 <script>
 let currentEditingTournamentId = null;
 
@@ -225,12 +224,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (adminLink) adminLink.style.display = 'block';
         }
 
-        //if (app.isOrganizer() || app.canCreateTournament()) {
-            const createBtn = document.getElementById('createTournamentBtn');
-            const requestsBtn = document.getElementById('viewRequestsBtn');
-            if (createBtn) createBtn.style.display = 'inline-block';
-            if (requestsBtn) requestsBtn.style.display = 'inline-block';
-        //}
+        const createBtn = document.getElementById('createTournamentBtn');
+        const requestsBtn = document.getElementById('viewRequestsBtn');
+        
+        // Habilitamos los botones temporalmente para todos
+        if (createBtn) createBtn.style.display = 'inline-block';
+        if (requestsBtn) requestsBtn.style.display = 'inline-block';
     }
 
     loadTournaments();
@@ -248,7 +247,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // ======================= CONECTADO A DJANGO =======================
 async function loadTournaments() {
     try {
-        const tournaments = await app.fetchAPI('/tournaments/');
+        const [tournaments, requests] = await Promise.all([
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/requests/')
+        ]);
+
         const tbody = document.getElementById('tournamentsTable');
         tbody.innerHTML = '';
 
@@ -262,18 +265,14 @@ async function loadTournaments() {
         tournaments.forEach(tournament => {
             const row = document.createElement('tr');
             const teamsCount = tournament.teams ? tournament.teams.length : 0;
-            // Django DRF suele devolver los IDs de relaciones foráneas. 
-            // Comprobamos si el usuario actual es el creador:
-            const isOrganizer = currentUser && (tournament.organizer === currentUser.id || tournament.organizerId === currentUser.id);
+            const isOrganizer = currentUser && (tournament.organizer === currentUser.id || tournament.organizer_id === currentUser.id);
             const canEdit = app.isAdmin() || isOrganizer;
             
-            // Lógica temporal para solicitudes locales
             let hasPendingRequest = false;
             if (currentUser) {
-                const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
                 hasPendingRequest = requests.some(r => 
-                    r.tournamentId === tournament.id && 
-                    r.userId === currentUser.id && 
+                    (r.tournament === tournament.id || r.tournament_id === tournament.id) && 
+                    (r.user === currentUser.id || r.user_id === currentUser.id) && 
                     r.status === 'pending'
                 );
             }
@@ -289,7 +288,7 @@ async function loadTournaments() {
                 <td>
                     <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="viewTournamentDetails(${tournament.id})">Ver</button>
                     ${!isOrganizer && currentUser && !hasPendingRequest && teamsCount < (tournament.maxTeams || tournament.max_teams) ? `
-                        <button class="btn btn-primary" style="padding: 5px 10px;" onclick="openJoinTournament(${tournament.id})">Unirse</button>
+                        <button class="btn btn-primary" style="padding: 5px 10px;" onclick="openJoinTournament(${tournament.id})">Inscribir Equipo</button>
                     ` : ''}
                     ${hasPendingRequest ? `<span style="color: #f59e0b; font-size: 12px;">Pendiente</span>` : ''}
                     ${canEdit ? `
@@ -301,7 +300,6 @@ async function loadTournaments() {
             tbody.appendChild(row);
         });
     } catch (error) {
-        console.error("Error cargando torneos:", error);
         app.showAlert('Error al cargar la lista de torneos', 'danger');
     }
 }
@@ -315,9 +313,7 @@ function openCreateModal() {
 
 async function editTournament(tournamentId) {
     try {
-        // Pedimos el torneo específico a Django
         const tournament = await app.fetchAPI(`/tournaments/${tournamentId}/`);
-        
         currentEditingTournamentId = tournamentId;
         document.getElementById('modalTitle').textContent = 'Editar Torneo';
         document.getElementById('tournamentName').value = tournament.name;
@@ -327,7 +323,6 @@ async function editTournament(tournamentId) {
         document.getElementById('tournamentEndDate').value = tournament.endDate || tournament.end_date;
         document.getElementById('tournamentLocation').value = tournament.location;
         document.getElementById('tournamentMaxTeams').value = tournament.maxTeams || tournament.max_teams;
-
         app.showModal('tournamentModal');
     } catch (error) {
         app.showAlert('Error al cargar los datos del torneo', 'danger');
@@ -336,8 +331,6 @@ async function editTournament(tournamentId) {
 
 async function saveTournament(e) {
     e.preventDefault();
-
-    // ¡Esta es la línea clave que faltaba adentro de la función!
     const currentUser = app.currentUser;
 
     const data = {
@@ -345,50 +338,38 @@ async function saveTournament(e) {
         description: document.getElementById('tournamentDescription').value,
         sport: document.getElementById('tournamentSport').value,
         startDate: document.getElementById('tournamentStartDate').value,
-        start_date: document.getElementById('tournamentStartDate').value,
         endDate: document.getElementById('tournamentEndDate').value,
-        end_date: document.getElementById('tournamentEndDate').value,
-        location: document.getElementById('tournamentLocation').value,
         maxTeams: parseInt(document.getElementById('tournamentMaxTeams').value),
-        max_teams: parseInt(document.getElementById('tournamentMaxTeams').value),
+        location: document.getElementById('tournamentLocation').value,
         status: 'active',
-        // Ahora sí sabe perfectamente de dónde sacar el ID:
-        organizer: currentUser.id,
-        organizer_id: currentUser.id
+        organizer: currentUser.id
     };
 
     try {
         if (currentEditingTournamentId) {
-            // Actualizar (PUT)
             await app.fetchAPI(`/tournaments/${currentEditingTournamentId}/`, {
                 method: 'PUT',
                 body: JSON.stringify(data)
             });
             app.showAlert('Torneo actualizado exitosamente', 'success');
         } else {
-            // Crear (POST)
             await app.fetchAPI('/tournaments/', {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
             app.showAlert('Torneo creado exitosamente', 'success');
         }
-
         app.closeModal('tournamentModal');
-        loadTournaments(); // Recargamos la tabla
+        loadTournaments();
     } catch (error) {
-        console.error("Error guardando torneo:", error);
         app.showAlert('Error al guardar el torneo', 'danger');
     }
 }
 
 async function deleteTournament(tournamentId) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este torneo en la base de datos? Esta acción no se puede deshacer.')) return;
-
+    if (!confirm('¿Estás seguro de que deseas eliminar este torneo?')) return;
     try {
-        await app.fetchAPI(`/tournaments/${tournamentId}/`, {
-            method: 'DELETE'
-        });
+        await app.fetchAPI(`/tournaments/${tournamentId}/`, { method: 'DELETE' });
         app.showAlert('Torneo eliminado', 'success');
         loadTournaments();
     } catch (error) {
@@ -396,43 +377,83 @@ async function deleteTournament(tournamentId) {
     }
 }
 
+// ======================= VISOR DE DETALLES MEJORADO =======================
 async function viewTournamentDetails(tournamentId) {
     try {
-        // Pedimos torneo y equipos en paralelo
         const [tournament, allTeams] = await Promise.all([
             app.fetchAPI(`/tournaments/${tournamentId}/`),
             app.fetchAPI('/teams/')
         ]);
 
-        // Filtramos los equipos que pertenecen a este torneo
-        const teams = allTeams.filter(t => t.tournament === tournamentId || t.tournamentId === tournamentId);
+        // 🔥 EL CAMBIO ESTÁ AQUÍ 🔥
+        // Como el Torneo es el dueño de la relación, leemos su lista 'tournament.teams'
+        // y filtramos allTeams basándonos en si están dentro de esa lista.
+        const teams = allTeams.filter(team => {
+            if (!tournament.teams) return false;
+            // Busca si el ID de este equipo existe en la lista de equipos del torneo
+            return tournament.teams.some(t => t === team.id || t.id === team.id);
+        });
+
+        const currentUser = app.currentUser;
+        const currentUserId = currentUser ? currentUser.id : null;
 
         let detailsHTML = `
-            <div style="margin-bottom: 15px;">
-                <p><strong>Nombre:</strong> ${tournament.name}</p>
-                <p><strong>Descripción:</strong> ${tournament.description}</p>
-                <p><strong>Deporte:</strong> ${tournament.sport}</p>
-                <p><strong>Fecha de Inicio:</strong> ${app.formatDate(tournament.startDate || tournament.start_date)}</p>
-                <p><strong>Fecha de Fin:</strong> ${app.formatDate(tournament.endDate || tournament.end_date)}</p>
-                <p><strong>Ubicación:</strong> ${tournament.location}</p>
-                <p><strong>Equipos:</strong> ${teams.length}/${tournament.maxTeams || tournament.max_teams}</p>
-                <p><strong>Estado:</strong> <span style="color: #10b981; font-weight: bold;">${tournament.status}</span></p>
+            <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #334155;">
+                <p style="margin-bottom: 5px;"><strong>🏅 Deporte:</strong> ${tournament.sport}</p>
+                <p style="margin-bottom: 0;"><strong>📊 Progreso de Inscripción:</strong> ${teams.length} de ${tournament.maxTeams || tournament.max_teams} equipos permitidos</p>
             </div>
+            
             <div>
-                <h4 style="margin-bottom: 10px; color: #38bdf8;">Equipos Participantes:</h4>
+                <h4 style="margin-bottom: 15px; color: #38bdf8;">🛡️ Equipos Participantes</h4>
                 ${teams.length > 0 ? `
-                    <ul style="list-style: none; padding: 0;">
-                        ${teams.map(team => `<li style="padding: 5px 0;">• ${team.name}</li>`).join('')}
-                    </ul>
-                ` : '<p style="color: #cbd5e1;">No hay equipos registrados aún</p>'}
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        ${teams.map(team => {
+                            const isCaptain = team.captain === currentUserId || team.captain_id === currentUserId;
+                            const miembros = team.members || []; 
+                            const isMember = miembros.includes(currentUserId);
+                            
+                            // 1 al conteo por el capitán
+                            const totalJugadores = miembros.length + (team.captain ? 1 : 0); 
+                            
+                            let actionBtn = '';
+                            if (currentUserId) { 
+                                if (isCaptain) {
+                                    actionBtn = `<span style="background: #fbbf24; color: #000; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">👑 Eres Capitán</span>`;
+                                } else if (isMember) {
+                                    actionBtn = `<span style="background: #10b981; color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">✓ Ya eres Miembro</span>`;
+                                } else {
+                                    // ¡EL GRAN BOTÓN DE UNIRSE!
+                                    actionBtn = `<button class="btn btn-primary" style="padding: 6px 15px; font-weight: bold; border-radius: 6px;" onclick="joinTeam(${team.id})">➕ Unirme</button>`;
+                                }
+                            }
+
+                            return `
+                            <div style="padding: 15px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                <div>
+                                    <strong style="font-size: 16px; color: #fff;">${team.name}</strong>
+                                    <div style="font-size: 13px; color: #94a3b8; margin-top: 5px;">👥 ${totalJugadores} Jugador(es)</div>
+                                </div>
+                                <div>
+                                    ${actionBtn}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                ` : `
+                    <div style="padding: 20px; text-align: center; background: #1e293b; border-radius: 8px; border: 1px dashed #475569;">
+                        <p style="color: #94a3b8; margin: 0;">No hay equipos registrados aún.</p>
+                        <p style="color: #64748b; font-size: 13px; margin-top: 5px;">¡Sé el primero en inscribir tu equipo!</p>
+                    </div>
+                `}
             </div>
         `;
 
         document.getElementById('detailsContent').innerHTML = detailsHTML;
-        document.getElementById('detailsTitle').textContent = tournament.name;
+        document.getElementById('detailsTitle').textContent = `Torneo: ${tournament.name}`;
         app.showModal('detailsModal');
     } catch (error) {
-        app.showAlert('Error al cargar los detalles', 'danger');
+        console.error("Error al cargar detalles:", error);
+        app.showAlert('Error al cargar los detalles del torneo', 'danger');
     }
 }
 
@@ -447,105 +468,164 @@ function filterTournaments() {
     });
 }
 
-// ======================= LOCAL STORAGE (MANTENIDO TEMPORALMENTE) =======================
-// Estas funciones de solicitudes las dejamos con db. para no romper el flujo
-// hasta crear los endpoints de requests en Django.
-
-function openJoinTournament(tournamentId) {
-    if(typeof db === 'undefined') return app.showAlert('Sistema de solicitudes en mantenimiento', 'warning');
+// ======================= SOLICITUDES =======================
+async function openJoinTournament(tournamentId) {
     const currentUser = app.currentUser;
     if (!currentUser) return app.showAlert('Debes iniciar sesión para unirte', 'danger');
 
-    const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
-    const existingRequest = requests.find(r => r.tournamentId === tournamentId && r.userId === currentUser.id && r.status === 'pending');
+    try {
+        const requests = await app.fetchAPI('/requests/');
+        const existingRequest = requests.find(r => 
+            (r.tournament === tournamentId || r.tournament_id === tournamentId) && 
+            (r.user === currentUser.id || r.user_id === currentUser.id) && 
+            r.status === 'pending'
+        );
 
-    if (existingRequest) {
-        app.showAlert('Ya tienes una solicitud pendiente para este torneo', 'warning');
-        return;
+        if (existingRequest) {
+            app.showAlert('Ya tienes una solicitud pendiente para este torneo', 'warning');
+            return;
+        }
+
+        document.getElementById('joinTournamentSelect').value = tournamentId;
+        app.showModal('joinTournamentModal');
+    } catch (error) {
+        app.showAlert('Error al verificar las solicitudes', 'danger');
     }
-
-    document.getElementById('joinTournamentSelect').value = tournamentId;
-    app.showModal('joinTournamentModal');
 }
 
-function submitJoinRequest(e) {
+async function submitJoinRequest(e) {
     e.preventDefault();
-    if(typeof db === 'undefined') return;
-
-    const tournamentId = parseInt(document.getElementById('joinTournamentSelect').value);
     const currentUser = app.currentUser;
 
     const data = {
-        tournamentId: tournamentId,
-        userId: currentUser.id,
-        userName: currentUser.name || currentUser.username,
-        teamName: document.getElementById('joinTeamName').value,
-        captainName: document.getElementById('joinCaptainName').value,
+        tournament: parseInt(document.getElementById('joinTournamentSelect').value),
+        user: currentUser.id,
+        team_name: document.getElementById('joinTeamName').value,
+        captain_name: document.getElementById('joinCaptainName').value,
         phone: document.getElementById('joinPhone').value,
         email: document.getElementById('joinEmail').value,
         notes: document.getElementById('joinNotes').value,
-        status: 'pending',
-        requestedAt: new Date().toISOString()
+        status: 'pending'
     };
 
-    const result = db.requestJoinTournamentWithDetails(data.tournamentId, data.userId, data);
-
-    if (result.success) {
-        app.showAlert(result.message, 'success');
+    try {
+        await app.fetchAPI('/requests/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        app.showAlert('Solicitud de inscripción de equipo enviada a los organizadores', 'success');
         app.closeModal('joinTournamentModal');
         document.getElementById('joinTournamentForm').reset();
         loadTournaments(); 
-    } else {
-        app.showAlert(result.message, 'danger');
+    } catch (error) {
+        app.showAlert('Error al enviar la solicitud', 'danger');
     }
 }
 
-function viewTournamentRequests() {
-    if(typeof db === 'undefined') return;
+async function viewTournamentRequests() {
     const currentUser = app.currentUser;
     if (!currentUser) return;
 
-    const myTournaments = db.getTournamentsByOrganizer ? db.getTournamentsByOrganizer(currentUser.id) : [];
-    const requests = JSON.parse(localStorage.getItem('tournamentRequests') || '[]');
-    
-    const myRequests = requests.filter(r => 
-        myTournaments.some(t => t.id === r.tournamentId) && r.status === 'pending'
-    );
+    try {
+        const [tournaments, requests] = await Promise.all([
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/requests/')
+        ]);
+        
+        const myTournaments = tournaments.filter(t => t.organizer === currentUser.id || t.organizer_id === currentUser.id);
+        const myTournamentIds = myTournaments.map(t => t.id);
 
-    const content = document.getElementById('requestsContent');
-    
-    if (myRequests.length === 0) {
-        content.innerHTML = '<p style="text-align: center; color: #64748b;">No hay solicitudes pendientes</p>';
-    } else {
-        content.innerHTML = myRequests.map(req => `
-            <div style="background: #334155; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                <p style="margin-bottom: 10px;"><strong>Equipo:</strong> ${req.teamName}</p>
-                <p style="margin-bottom: 5px;"><strong>Capitán:</strong> ${req.captainName}</p>
-                <p style="margin-bottom: 5px;"><strong>Teléfono:</strong> ${req.phone}</p>
-                <p style="margin-bottom: 5px;"><strong>Email:</strong> ${req.email}</p>
-                <p style="margin-bottom: 5px;"><strong>Torneo:</strong> ${req.tournamentName || req.tournamentId}</p>
-                ${req.notes ? `<p style="margin-bottom: 10px;"><strong>Notas:</strong> ${req.notes}</p>` : ''}
-                <div style="display: flex; gap: 10px; margin-top: 10px;">
-                    <button class="btn btn-success btn-sm" onclick="respondToRequest(${req.id}, true)">Aceptar</button>
-                    <button class="btn btn-danger btn-sm" onclick="respondToRequest(${req.id}, false)">Rechazar</button>
+        const myRequests = requests.filter(r => 
+            (myTournamentIds.includes(r.tournament) || myTournamentIds.includes(r.tournament_id)) && 
+            r.status === 'pending'
+        );
+
+        const content = document.getElementById('requestsContent');
+        
+        if (myRequests.length === 0) {
+            content.innerHTML = '<p style="text-align: center; color: #64748b;">No hay solicitudes pendientes</p>';
+        } else {
+            content.innerHTML = myRequests.map(req => `
+                <div style="background: #334155; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin-bottom: 10px;"><strong>Equipo:</strong> ${req.team_name}</p>
+                    <p style="margin-bottom: 5px;"><strong>Capitán:</strong> ${req.captain_name}</p>
+                    <p style="margin-bottom: 5px;"><strong>Teléfono:</strong> ${req.phone}</p>
+                    <p style="margin-bottom: 5px;"><strong>Email:</strong> ${req.email}</p>
+                    <p style="margin-bottom: 5px;"><strong>Torneo:</strong> ${req.tournament_name || req.tournament}</p>
+                    ${req.notes ? `<p style="margin-bottom: 10px;"><strong>Notas:</strong> ${req.notes}</p>` : ''}
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button class="btn btn-success btn-sm" onclick="respondToRequest(${req.id}, true)">Aceptar</button>
+                        <button class="btn btn-danger btn-sm" onclick="respondToRequest(${req.id}, false)">Rechazar</button>
+                    </div>
                 </div>
-            </div>
-        `).join('');
-    }
+            `).join('');
+        }
 
-    app.showModal('requestsModal');
+        app.showModal('requestsModal');
+    } catch (error) {
+        app.showAlert('Error al cargar las solicitudes', 'danger');
+    }
 }
 
-function respondToRequest(requestId, accepted) {
-    if(typeof db === 'undefined') return;
+async function respondToRequest(requestId, accepted) {
+    const newStatus = accepted ? 'accepted' : 'rejected';
     
-    const result = db.respondToTournamentRequest(requestId, accepted);
+    try {
+        const req = await app.fetchAPI(`/requests/${requestId}/`);
+        const userId = req.user || req.user_id;
+        const tournamentId = req.tournament || req.tournament_id;
+
+        await app.fetchAPI(`/requests/${requestId}/`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: newStatus })
+        });
+
+        if (accepted) {
+            await app.fetchAPI(`/tournaments/${tournamentId}/add-team/`, {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    team_name: req.team_name,
+                    user_id: userId 
+                })
+            });
+            app.showAlert('Solicitud aceptada. ¡Equipo y capitán registrados!', 'success');
+        } else {
+            app.showAlert('Solicitud rechazada', 'info');
+        }
+        
+        app.closeModal('requestsModal');
+        loadTournaments(); 
+        
+    } catch (error) {
+        app.showAlert('Ocurrió un error al procesar la solicitud.', 'danger');
+    }
+}
+async function joinTeam(teamId) {
+    if (!confirm('¿Estás seguro de que deseas unirte a este equipo como jugador?')) return;
     
-    if (result.success) {
-        app.showAlert(accepted ? 'Solicitud aceptada' : 'Solicitud rechazada', 'success');
-        viewTournamentRequests(); 
-    } else {
-        app.showAlert(result.message, 'danger');
+    try {
+        const currentUser = app.currentUser;
+        
+        // ¡Aquí está la magia! Le enviamos a Django exactamente tu ID
+        await app.fetchAPI(`/teams/${teamId}/join/`, {
+            method: 'POST',
+            body: JSON.stringify({ user_id: currentUser.id }) 
+        });
+        
+        app.showAlert('¡Te has unido al equipo exitosamente!', 'success');
+        app.closeModal('detailsModal');
+        
+        // Recargamos todo para que se actualicen los datos
+        loadTournaments(); 
+        
+        // Si tienes estas funciones en tus otras pantallas, las llamamos para que se actualicen:
+        if (typeof loadMyTeams === 'function') loadMyTeams(); 
+        if (typeof loadTeams === 'function') loadTeams(); 
+        
+    } catch (error) {
+        console.error("Error al unirse al equipo:", error);
+        app.showAlert('Error al unirse. Verifica la consola para más detalles.', 'danger');
     }
 }
 </script>
