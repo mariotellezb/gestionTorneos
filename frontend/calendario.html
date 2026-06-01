@@ -37,7 +37,7 @@
     <div class="main-content">
         <div class="header">
             <h1>Calendario de Partidos</h1>
-            <button id="createMatchBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Partido</button>
+            <button id="createMatchBtn" class="btn btn-success btn-sm">+ Crear Partido</button>
         </div>
 
         <div class="content">
@@ -80,7 +80,7 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="matchesTable">
+                <tbody id="matchesTableBody">
                     <tr>
                         <td colspan="8" style="text-align: center; color: #cbd5e1;">Cargando partidos...</td>
                     </tr>
@@ -102,21 +102,17 @@
                 <div class="form-column">
                     <div class="form-group">
                         <label>Torneo</label>
-                        <select id="matchTournament" required onchange="loadTournamentTeams()">
+                        <select id="matchTournament" required>
                             <option value="">Selecciona un torneo</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Equipo Local</label>
-                        <select id="matchHomeTeam" required>
-                            <option value="">Selecciona un equipo</option>
-                        </select>
+                    <div class="mb-3">
+                        <label>Equipo Local:</label>
+                        <select id="matchLocalTeam" class="form-control" required></select>
                     </div>
-                    <div class="form-group">
-                        <label>Equipo Visitante</label>
-                        <select id="matchAwayTeam" required>
-                            <option value="">Selecciona un equipo</option>
-                        </select>
+                    <div class="mb-3">
+                        <label>Equipo Visitante:</label>
+                        <select id="matchAwayTeam" class="form-control" required></select>
                     </div>
                 </div>
                 <div class="form-column">
@@ -144,185 +140,351 @@
 
 <script src="js/app.js"></script>
 <script>
-let currentEditingMatchId = null;
-let allMatches = [];
-let allTournaments = [];
-let allTeams = [];
+let editingMatchId = null; // Nos dirá si estamos editando o creando
+let allMatchesData = []; // Aquí guardaremos los partidos para los filtros
 
 document.addEventListener('DOMContentLoaded', async function() {
     if (!app.checkAuth()) return;
-    
-    const currentUser = app.currentUser;
-    if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
-
-        if (app.isAdmin()) document.getElementById('adminLink').style.display = 'block';
-        if (app.isAdmin() || app.isOrganizer()) document.getElementById('createMatchBtn').style.display = 'inline-block';
-    }
-
-    await loadInitialData();
     app.initializeNavigation();
 
-    document.getElementById('createMatchBtn').addEventListener('click', openCreateModal);
-    document.getElementById('matchForm').addEventListener('submit', saveMatch);
+    // 1. Verificamos si eres organizador para mostrar el botón
+    await checkOrganizerStatus();
+
+    // 2. Cargamos la tabla del calendario
+    await loadCalendarMatches();
+
+    // 3. Event Listeners
+    const createBtn = document.getElementById('createMatchBtn');
+    if (createBtn) {
+        createBtn.addEventListener('click', () => {
+            editingMatchId = null; // Limpiamos el modo edición
+            document.getElementById('modalTitle').textContent = 'Crear Partido';
+            document.getElementById('matchForm').reset();
+            loadMatchFormOptions(); 
+            app.showModal('matchModal');
+        });
+    }
+
+    const matchForm = document.getElementById('matchForm');
+    if (matchForm) matchForm.addEventListener('submit', saveMatch);
+
+    // Si tienes inputs de filtro en tu HTML con estos IDs, esto los hace funcionar:
+    const filterSport = document.getElementById('filterSport');
+    const filterTournament = document.getElementById('filterTournament');
+    if (filterSport) filterSport.addEventListener('input', applyCalendarFilters);
+    if (filterTournament) filterTournament.addEventListener('input', applyCalendarFilters);
 });
 
-async function loadInitialData() {
-    try {
-        // Cargamos torneos, equipos y partidos al mismo tiempo
-        [allTournaments, allTeams, allMatches] = await Promise.all([
-            app.fetchAPI('/tournaments/'),
-            app.fetchAPI('/teams/'),
-            app.fetchAPI('/matches/')
-        ]);
-        
-        populateTournamentDropdowns();
-        displayMatches(allMatches);
-    } catch (error) {
-        app.showAlert('Error al cargar los datos del calendario', 'danger');
-    }
-}
+// ================== SEGURIDAD Y ROLES ==================
+async function checkOrganizerStatus() {
+    const currentUser = app.currentUser;
+    const createBtn = document.getElementById('createMatchBtn');
+    if (!currentUser || !createBtn) return;
 
-function populateTournamentDropdowns() {
-    const select = document.getElementById('filterTournament');
-    const matchSelect = document.getElementById('matchTournament');
-    
-    // Limpiar opciones previas exceptuando la primera
-    select.innerHTML = '<option value="">Todos los torneos</option>';
-    matchSelect.innerHTML = '<option value="">Selecciona un torneo</option>';
-
-    allTournaments.forEach(t => {
-        select.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        matchSelect.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-    });
-}
-
-function loadTournamentTeams() {
-    const tournamentId = parseInt(document.getElementById('matchTournament').value);
-    const homeTeamSelect = document.getElementById('matchHomeTeam');
-    const awayTeamSelect = document.getElementById('matchAwayTeam');
-    
-    homeTeamSelect.innerHTML = '<option value="">Selecciona un equipo</option>';
-    awayTeamSelect.innerHTML = '<option value="">Selecciona un equipo</option>';
-
-    // Filtramos los equipos que pertenecen a este torneo
-    const tournamentTeams = allTeams.filter(t => t.tournament === tournamentId || t.tournament_id === tournamentId);
-
-    tournamentTeams.forEach(team => {
-        homeTeamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
-        awayTeamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
-    });
-}
-
-function displayMatches(matches) {
-    const tbody = document.getElementById('matchesTable');
-    tbody.innerHTML = '';
-
-    if (matches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #cbd5e1;">No hay partidos programados</td></tr>';
+    if (app.isAdmin()) {
+        createBtn.style.display = 'inline-block';
         return;
     }
 
-    matches.forEach(match => {
-        const tournament = allTournaments.find(t => t.id === match.tournament || t.id === match.tournament_id);
-        const homeTeam = allTeams.find(t => t.id === match.homeTeam || t.id === match.home_team);
-        const awayTeam = allTeams.find(t => t.id === match.awayTeam || t.id === match.away_team);
+    try {
+        const tournaments = await app.fetchAPI('/tournaments/');
+        // ¿El usuario es dueño de al menos un torneo?
+        const isOrganizer = tournaments.some(t => t.organizer === currentUser.id || t.organizer_id === currentUser.id);
+        
+        if (isOrganizer) {
+            createBtn.style.display = 'inline-block';
+        }
+    } catch (error) {
+        console.error("Error verificando rol:", error);
+    }
+}
+// Variables globales temporales para no tener que consultar a la base de datos cada vez que cambias de torneo
+let globalTeams = [];
+let globalTournaments = [];
 
-        const row = document.createElement('tr');
-        const homeScore = match.homeScore ?? match.home_score;
-        const awayScore = match.awayScore ?? match.away_score;
-        const resultText = (homeScore !== null && awayScore !== null) ? `${homeScore} - ${awayScore}` : '-';
+async function loadMatchFormOptions() {
+    try {
+        console.log("1. Iniciando carga de opciones para el formulario...");
+        
+        const currentUser = app.currentUser;
+        if (!currentUser) throw new Error("No se detectó un usuario activo");
 
-        row.innerHTML = `
-            <td>${tournament ? tournament.name : 'Desc'}</td>
-            <td>${homeTeam ? homeTeam.name : 'Desc'}</td>
-            <td>${awayTeam ? awayTeam.name : 'Desc'}</td>
-            <td>${app.formatDate(match.date)} ${match.time ? match.time.substring(0,5) : ''}</td>
-            <td>${match.location || ''}</td>
-            <td><span style="color: #f59e0b;">${match.status || 'scheduled'}</span></td>
-            <td>${resultText}</td>
-            <td>
-                ${app.isOrganizer() || app.isAdmin() ? `<button class="btn btn-secondary" style="padding: 5px 10px;" onclick="editMatch(${match.id})">Editar</button>` : ''}
-            </td>
-        `;
-        tbody.appendChild(row);
+        console.log("2. Descargando datos de Django...");
+        const [tournaments, teams] = await Promise.all([
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/teams/')
+        ]);
+        
+        console.log("3. Datos recibidos. Torneos:", tournaments.length, "| Equipos:", teams.length);
+
+        // Guardamos los datos para usarlos en el filtro rápido
+        globalTournaments = tournaments;
+        globalTeams = teams;
+
+        console.log("4. Filtrando torneos para el usuario ID:", currentUser.id);
+        const myTournaments = (typeof app.isAdmin === 'function' && app.isAdmin()) 
+            ? tournaments 
+            : tournaments.filter(t => t.organizer === currentUser.id || t.organizer_id === currentUser.id);
+
+        console.log("5. Torneos permitidos para este usuario:", myTournaments.length);
+
+        const tournamentSelect = document.getElementById('matchTournament');
+        const localSelect = document.getElementById('matchLocalTeam');
+        const awaySelect = document.getElementById('matchAwayTeam');
+
+        if (tournamentSelect) {
+            tournamentSelect.innerHTML = '<option value="">Selecciona tu torneo...</option>' + 
+                myTournaments.map(t => `<option value="${t.id}">${t.name} (${t.sport})</option>`).join('');
+            
+            // --- AQUÍ ESTÁ EL ESCUDO ACTIVADO ---
+            if (localSelect && awaySelect) {
+                localSelect.innerHTML = '<option value="">Primero selecciona un torneo...</option>';
+                awaySelect.innerHTML = '<option value="">Primero selecciona un torneo...</option>';
+                localSelect.disabled = true;
+                awaySelect.disabled = true;
+            } else {
+                console.warn("⚠️ Ojo: No encontré los selectores de equipos en el HTML. Revisa tus IDs.");
+            }
+            // ------------------------------------
+
+            // Escuchador de eventos
+            tournamentSelect.removeEventListener('change', updateTeamDropdowns);
+            tournamentSelect.addEventListener('change', updateTeamDropdowns);
+            console.log("6. ¡Formulario inicializado con éxito!");
+        } else {
+            throw new Error("No se encontró el elemento 'matchTournament' en el HTML");
+        }
+
+    } catch (error) {
+        console.error("🔴 ERROR DETALLADO AL CARGAR OPCIONES:", error);
+        app.showAlert('Error al cargar la lista de opciones. Revisa la consola (F12).', 'danger');
+    }
+}
+
+// Esta es la función que hace la magia de filtrar
+function updateTeamDropdowns(e) {
+    const selectedTournamentId = parseInt(e.target.value);
+    const localSelect = document.getElementById('matchLocalTeam');
+    const awaySelect = document.getElementById('matchAwayTeam');
+
+    // Si el usuario regresa a la opción "Selecciona tu torneo..."
+    if (!selectedTournamentId) {
+        localSelect.innerHTML = '<option value="">Primero selecciona un torneo...</option>';
+        awaySelect.innerHTML = '<option value="">Primero selecciona un torneo...</option>';
+        localSelect.disabled = true;
+        awaySelect.disabled = true;
+        return;
+    }
+
+    // Buscamos el torneo seleccionado en nuestra lista global
+    const selectedTournament = globalTournaments.find(t => t.id === selectedTournamentId);
+    
+    // Filtramos TODOS los equipos, dejando solo los que están en este torneo específico
+    const tournamentTeams = globalTeams.filter(team => {
+        return selectedTournament && selectedTournament.teams && selectedTournament.teams.includes(team.id);
     });
-}
 
-function openCreateModal() {
-    currentEditingMatchId = null;
-    document.getElementById('modalTitle').textContent = 'Crear Partido';
-    document.getElementById('matchForm').reset();
-    document.getElementById('matchHomeTeam').innerHTML = '<option value="">Selecciona un equipo</option>';
-    document.getElementById('matchAwayTeam').innerHTML = '<option value="">Selecciona un equipo</option>';
-    app.showModal('matchModal');
-}
+    // Si el torneo es nuevo y no tiene equipos inscritos
+    if (tournamentTeams.length === 0) {
+        const emptyOption = '<option value="">No hay equipos inscritos en este torneo</option>';
+        localSelect.innerHTML = emptyOption;
+        awaySelect.innerHTML = emptyOption;
+        localSelect.disabled = true;
+        awaySelect.disabled = true;
+        return;
+    }
 
-async function editMatch(matchId) {
-    const match = allMatches.find(m => m.id === matchId);
-    if (!match) return;
+    // Si todo está bien, construimos las opciones con los equipos correctos
+    const teamOptions = '<option value="">Selecciona un equipo...</option>' + 
+        tournamentTeams.map(t => `<option value="${t.id}">🛡️ ${t.name}</option>`).join('');
 
-    currentEditingMatchId = matchId;
-    document.getElementById('modalTitle').textContent = 'Editar Partido';
-    document.getElementById('matchTournament').value = match.tournament || match.tournament_id;
-    loadTournamentTeams();
-
-    setTimeout(() => {
-        document.getElementById('matchHomeTeam').value = match.homeTeam || match.home_team;
-        document.getElementById('matchAwayTeam').value = match.awayTeam || match.away_team;
-    }, 100);
-
-    document.getElementById('matchDate').value = match.date;
-    document.getElementById('matchTime').value = match.time;
-    document.getElementById('matchLocation').value = match.location;
-    app.showModal('matchModal');
+    localSelect.innerHTML = teamOptions;
+    awaySelect.innerHTML = teamOptions;
+    
+    // ¡Encendemos los selectores!
+    localSelect.disabled = false;
+    awaySelect.disabled = false;
 }
 
 async function saveMatch(e) {
     e.preventDefault();
-
+    
     const data = {
         tournament: parseInt(document.getElementById('matchTournament').value),
-        tournament_id: parseInt(document.getElementById('matchTournament').value),
-        home_team: parseInt(document.getElementById('matchHomeTeam').value),
-        away_team: parseInt(document.getElementById('matchAwayTeam').value),
+        homeTeam: parseInt(document.getElementById('matchLocalTeam').value),
+        awayTeam: parseInt(document.getElementById('matchAwayTeam').value),
         date: document.getElementById('matchDate').value,
         time: document.getElementById('matchTime').value,
         location: document.getElementById('matchLocation').value,
         status: 'scheduled'
     };
 
-    if (data.home_team === data.away_team) {
-        app.showAlert('El equipo local y visitante deben ser diferentes', 'danger');
-        return;
+    if (data.homeTeam === data.awayTeam) {
+        return app.showAlert('El equipo local y visitante no pueden ser el mismo', 'warning');
     }
 
     try {
-        if (currentEditingMatchId) {
-            await app.fetchAPI(`/matches/${currentEditingMatchId}/`, { method: 'PUT', body: JSON.stringify(data) });
-        } else {
-            await app.fetchAPI('/matches/', { method: 'POST', body: JSON.stringify(data) });
-        }
-        app.showAlert('Partido guardado', 'success');
+        // ¿Estamos editando o creando?
+        const method = editingMatchId ? 'PUT' : 'POST';
+        const url = editingMatchId ? `/matches/${editingMatchId}/` : '/matches/';
+
+        await app.fetchAPI(url, {
+            method: method,
+            body: JSON.stringify(data)
+        });
+        
+        app.showAlert(editingMatchId ? 'Partido actualizado' : 'Partido programado exitosamente', 'success');
         app.closeModal('matchModal');
-        loadInitialData(); // Recarga todo
+        editingMatchId = null; // Apagamos el modo edición
+        loadCalendarMatches(); 
     } catch (error) {
-        app.showAlert('Error al guardar el partido', 'danger');
+        console.error("Error al guardar:", error);
+        app.showAlert('Error al procesar el partido', 'danger');
     }
 }
 
-function filterMatches() {
-    const tFilter = parseInt(document.getElementById('filterTournament').value);
-    const sFilter = document.getElementById('filterStatus').value;
+// ================== TABLA Y FILTROS ==================
+async function loadCalendarMatches() {
+    try {
+        const [matches, tournaments, teams] = await Promise.all([
+            app.fetchAPI('/matches/'),
+            app.fetchAPI('/tournaments/'),
+            app.fetchAPI('/teams/')
+        ]);
 
-    const filtered = allMatches.filter(match => {
-        const tournamentMatch = !tFilter || match.tournament === tFilter || match.tournament_id === tFilter;
-        const statusMatch = !sFilter || match.status === sFilter;
-        return tournamentMatch && statusMatch;
-    });
-    displayMatches(filtered);
+        allMatchesData = matches.map(match => {
+            const torneo = tournaments.find(t => t.id === match.tournament || t.id === match.tournament_id);
+            // Ahora leemos homeTeam y awayTeam
+            const local = teams.find(t => t.id === match.homeTeam || t.id === match.homeTeam_id);
+            const visitante = teams.find(t => t.id === match.awayTeam || t.id === match.awayTeam_id);
+
+            // Creamos una fecha combinada solo para poder ordenarlos cronológicamente en JS
+            const fechaCompleta = `${match.date}T${match.time || '00:00:00'}`;
+
+            return {
+                ...match,
+                fullDateTimeObj: new Date(fechaCompleta),
+                tournamentName: torneo ? torneo.name : 'Desconocido',
+                sport: torneo ? torneo.sport : 'N/A',
+                localName: local ? local.name : 'Por definir',
+                awayName: visitante ? visitante.name : 'Por definir'
+            };
+        });
+
+        // Ordenamos por fecha (del más cercano al más lejano) usando el objeto de fecha que creamos
+        allMatchesData.sort((a, b) => a.fullDateTimeObj - b.fullDateTimeObj);
+
+        renderMatches(allMatchesData);
+
+    } catch (error) {
+        console.error("Error al cargar el calendario:", error);
+    }
 }
+
+function renderMatches(matches) {
+    const tbody = document.getElementById('matchesTableBody'); 
+    if (!tbody) return;
+
+    if (matches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">No hay partidos programados</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = matches.map(m => {
+        // 1. Formateamos la fecha
+        const dateStr = m.fullDateTimeObj.toLocaleDateString() + ' ' + m.fullDateTimeObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        // 2. Calculamos el resultado (si no hay puntaje aún, mostramos un guion)
+        const resultado = (m.homeScore !== null && m.awayScore !== null) 
+            ? `${m.homeScore} - ${m.awayScore}` 
+            : '-';
+
+        // 3. Le damos estilo al estado del partido
+        let estadoBadge = '';
+        if (m.status === 'scheduled') estadoBadge = '<span style="background: #3b82f6; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">Programado</span>';
+        else if (m.status === 'in_progress') estadoBadge = '<span style="background: #f59e0b; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">En Curso</span>';
+        else if (m.status === 'finished') estadoBadge = '<span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">Finalizado</span>';
+        else estadoBadge = `<span style="background: #64748b; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">${m.status}</span>`;
+
+        // 4. Armamos las 8 columnas EXACTAS que pide tu tabla
+        return `
+        <tr style="border-bottom: 1px solid #334155;">
+            <!-- Columna 1: Torneo -->
+            <td style="padding: 12px; color: #f59e0b; font-weight: bold;">${m.tournamentName}</td>
+            
+            <!-- Columna 2: Equipo Local -->
+            <td style="padding: 12px; color: #38bdf8;">${m.localName}</td>
+            
+            <!-- Columna 3: Equipo Visitante -->
+            <td style="padding: 12px; color: #ef4444;">${m.awayName}</td>
+            
+            <!-- Columna 4: Fecha y Hora -->
+            <td style="padding: 12px;"><strong>${dateStr}</strong></td>
+            
+            <!-- Columna 5: Ubicación -->
+            <td style="padding: 12px; color: #cbd5e1;">${m.location || 'Por definir'}</td>
+            
+            <!-- Columna 6: Estado -->
+            <td style="padding: 12px;">${estadoBadge}</td>
+            
+            <!-- Columna 7: Resultado -->
+            <td style="padding: 12px; text-align: center; font-weight: bold; font-size: 16px;">${resultado}</td>
+            
+            <!-- Columna 8: Acciones -->
+            <td style="padding: 12px;">
+                <button class="btn btn-sm" style="background-color: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" onclick="editMatch(${m.id})">✏️ Editar</button>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+function applyCalendarFilters() {
+    const sportFilter = document.getElementById('filterSport') ? document.getElementById('filterSport').value.toLowerCase() : '';
+    const tournamentFilter = document.getElementById('filterTournament') ? document.getElementById('filterTournament').value.toLowerCase() : '';
+    
+    const filteredMatches = allMatchesData.filter(match => {
+        const matchSport = match.sport.toLowerCase();
+        const matchTournament = match.tournamentName.toLowerCase();
+        
+        const passesSport = sportFilter === '' || matchSport.includes(sportFilter);
+        const passesTournament = tournamentFilter === '' || matchTournament.includes(tournamentFilter);
+        
+        return passesSport && passesTournament;
+    });
+
+    renderMatches(filteredMatches);
+}
+
+async function editMatch(matchId) {
+    // 1. Buscamos el partido en nuestros datos descargados
+    const match = allMatchesData.find(m => m.id === matchId);
+    if (!match) return;
+
+    // 2. Activamos el "modo edición"
+    editingMatchId = matchId;
+    document.getElementById('modalTitle').textContent = 'Editar Partido';
+
+    // 3. Cargamos los torneos y equipos
+    await loadMatchFormOptions();
+
+    // 4. Llenamos el formulario con los datos
+    const tournamentSelect = document.getElementById('matchTournament');
+    tournamentSelect.value = match.tournament || match.tournament_id;
+
+    // Engañamos a nuestra función de filtro para que cargue los equipos de este torneo
+    updateTeamDropdowns({ target: { value: tournamentSelect.value } });
+
+    document.getElementById('matchLocalTeam').value = match.homeTeam || match.homeTeam_id;
+    document.getElementById('matchAwayTeam').value = match.awayTeam || match.awayTeam_id;
+    document.getElementById('matchDate').value = match.date;
+    document.getElementById('matchTime').value = match.time;
+    document.getElementById('matchLocation').value = match.location;
+
+    // 5. Abrimos la ventana
+    app.showModal('matchModal');
+}
+
 </script>
 
 <!-- Footer -->

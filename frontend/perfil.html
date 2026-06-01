@@ -93,18 +93,18 @@
                 <!-- COLUMNA DERECHA -->
                 <div class="profile-column">
                     <!-- EQUIPOS DEL USUARIO -->
-                    <div class="card">
-                        <h3>Mis Equipos</h3>
-                        <div id="userTeamsContainer">
-                            <p style="color: #cbd5e1;">Cargando equipos...</p>
+                    <div class="mt-4">
+                        <h3 style="color: #38bdf8; margin-bottom: 15px;">🛡️ Mis Equipos</h3>
+                        <div id="myTeamsContainer">
+                            <p style="color: #94a3b8;">Cargando mis equipos...</p>
                         </div>
                     </div>
 
                     <!-- TORNEOS EN LOS QUE PARTICIPA -->
-                    <div class="card">
-                        <h3>Torneos en los que Participas</h3>
-                        <div id="userTournamentsContainer">
-                            <p style="color: #cbd5e1;">Cargando torneos...</p>
+                    <div class="mt-4">
+                        <h3 style="color: #f59e0b; margin-bottom: 15px;">🏆 Torneos en los que Participo</h3>
+                        <div id="myTournamentsContainer">
+                            <p style="color: #94a3b8;">Cargando mis torneos...</p>
                         </div>
                     </div>
 
@@ -151,6 +151,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     app.initializeNavigation();
+    loadMyProfileTeams();
     
     document.getElementById('profileForm').addEventListener('submit', updateProfile);
     document.getElementById('passwordForm').addEventListener('submit', changePassword);
@@ -290,57 +291,84 @@ async function loadMyTeams() {
     }
 }
 
-// Agrega esto en tu perfil.html o app.js
 async function loadMyProfileTeams() {
     const currentUser = app.currentUser;
     if (!currentUser) return;
 
     try {
-        // Pedimos todos los equipos y todos los torneos
         const [allTeams, allTournaments] = await Promise.all([
             app.fetchAPI('/teams/'),
             app.fetchAPI('/tournaments/')
         ]);
 
-        // Filtramos: ¿Soy el capitán o mi ID está en la lista de 'members'?
+        // 1. FILTRAMOS MIS EQUIPOS (Como ya lo hacíamos)
         const misEquipos = allTeams.filter(team => {
             const isCaptain = team.captain === currentUser.id || team.captain_id === currentUser.id;
             const isMember = team.members && team.members.includes(currentUser.id);
             return isCaptain || isMember;
         });
 
-        const container = document.getElementById('myTeamsContainer'); 
-        if (!container) return; // Si no existe el div, ignoramos
+        // 2. FILTRAMOS MIS TORNEOS (Donde juegan mis equipos)
+        const misEquiposIds = misEquipos.map(team => team.id);
+        const misTorneos = allTournaments.filter(tournament => {
+            if (!tournament.teams) return false;
+            // Revisamos si alguno de mis equipos está en la lista de equipos de este torneo
+            return tournament.teams.some(teamId => misEquiposIds.includes(teamId));
+        });
 
-        if (misEquipos.length === 0) {
-            container.innerHTML = '<p style="color: #94a3b8;">Aún no perteneces a ningún equipo.</p>';
-            return;
+        // --- RENDERIZAR EQUIPOS ---
+        const teamsContainer = document.getElementById('myTeamsContainer'); 
+        if (teamsContainer) {
+            if (misEquipos.length === 0) {
+                teamsContainer.innerHTML = '<p style="color: #94a3b8; background: #1e293b; padding: 15px; border-radius: 8px;">Aún no estás inscrito en ningún equipo.</p>';
+            } else {
+                let htmlTeams = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">';
+                misEquipos.forEach(team => {
+                    const torneo = allTournaments.find(t => t.teams && t.teams.includes(team.id));
+                    const nombreTorneo = torneo ? torneo.name : 'Sin torneo asignado';
+                    const rol = (team.captain === currentUser.id || team.captain_id === currentUser.id) ? '👑 Capitán' : '🏃 Jugador';
+
+                    htmlTeams += `
+                    <div style="background: #1e293b; padding: 20px; border-radius: 8px; border-left: 4px solid #38bdf8; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h4 style="color: #fff; margin-top: 0; margin-bottom: 10px; font-size: 18px;">${team.name}</h4>
+                        <p style="margin: 0 0 5px 0; color: #94a3b8; font-size: 14px;"><strong>Torneo:</strong> ${nombreTorneo}</p>
+                        <p style="margin: 0; color: #10b981; font-size: 14px;"><strong>Mi Rol:</strong> ${rol}</p>
+                    </div>`;
+                });
+                htmlTeams += '</div>';
+                teamsContainer.innerHTML = htmlTeams;
+            }
         }
 
-        let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
-        misEquipos.forEach(team => {
-            // Buscamos en qué torneo está inscrito este equipo
-            const torneo = allTournaments.find(t => t.teams && t.teams.includes(team.id));
-            const nombreTorneo = torneo ? torneo.name : 'Sin torneo asignado';
-            const rol = (team.captain === currentUser.id || team.captain_id === currentUser.id) ? '👑 Capitán' : '🏃 Jugador';
+        // --- RENDERIZAR TORNEOS ---
+        const tournamentsContainer = document.getElementById('myTournamentsContainer');
+        if (tournamentsContainer) {
+            if (misTorneos.length === 0) {
+                tournamentsContainer.innerHTML = '<p style="color: #94a3b8; background: #1e293b; padding: 15px; border-radius: 8px;">Aún no participas en ningún torneo.</p>';
+            } else {
+                let htmlTournaments = '<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">';
+                misTorneos.forEach(torneo => {
+                    // Buscamos con cuál de mis equipos estoy jugando en este torneo específico
+                    const miEquipoAqui = misEquipos.find(team => torneo.teams.includes(team.id));
+                    const nombreEquipoAqui = miEquipoAqui ? miEquipoAqui.name : 'Desconocido';
 
-            html += `
-            <div style="background: #1e293b; padding: 15px; border-radius: 8px; border: 1px solid #334155;">
-                <h4 style="color: #38bdf8; margin-top: 0; margin-bottom: 5px;">${team.name}</h4>
-                <p style="margin: 0; color: #94a3b8; font-size: 14px;"><strong>Torneo:</strong> ${nombreTorneo}</p>
-                <p style="margin: 0; color: #10b981; font-size: 14px;"><strong>Mi Rol:</strong> ${rol}</p>
-            </div>`;
-        });
-        html += '</div>';
-        
-        container.innerHTML = html;
+                    htmlTournaments += `
+                    <div style="background: #1e293b; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <h4 style="color: #fff; margin-top: 0; margin-bottom: 10px; font-size: 18px;">${torneo.name}</h4>
+                        <p style="margin: 0 0 5px 0; color: #94a3b8; font-size: 14px;"><strong>Deporte:</strong> ${torneo.sport}</p>
+                        <p style="margin: 0 0 5px 0; color: #94a3b8; font-size: 14px;"><strong>Sede:</strong> ${torneo.location || 'Por definir'}</p>
+                        <p style="margin: 0; color: #f59e0b; font-size: 14px;"><strong>Participando con:</strong> 🛡️ ${nombreEquipoAqui}</p>
+                    </div>`;
+                });
+                htmlTournaments += '</div>';
+                tournamentsContainer.innerHTML = htmlTournaments;
+            }
+        }
 
     } catch (error) {
-        console.error("Error al cargar mis equipos en el perfil:", error);
+        console.error("Error al cargar los datos del perfil:", error);
     }
 }
-
-
 
 </script>
 

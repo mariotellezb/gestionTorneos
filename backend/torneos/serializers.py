@@ -1,5 +1,11 @@
 from rest_framework import serializers
 from .models import Tournament, Team, Match, CustomUser, TournamentRequest
+from .models import Notification
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
 
 # El serializador toma tu modelo de la base de datos y lo convierte en un JSON 
 # idéntico al que tenías en tu LocalStorage.

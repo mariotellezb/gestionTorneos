@@ -154,3 +154,23 @@ def register_view(request):
 class TournamentRequestViewSet(viewsets.ModelViewSet):
     queryset = TournamentRequest.objects.all()
     serializer_class = TournamentRequestSerializer
+
+
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .models import Notification
+from .serializers import NotificationSerializer
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    serializer_class = NotificationSerializer
+
+    # Solo te devuelve TUS notificaciones, ordenadas de la más nueva a la más vieja
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-createdAt')
+
+    # Acción especial para el botón "Marcar todas como leídas"
+    @action(detail=False, methods=['post'], url_path='mark-all-read')
+    def mark_all_read(self, request):
+        notificaciones = self.get_queryset().filter(is_read=False)
+        notificaciones.update(is_read=True)
+        return Response({'success': True, 'message': 'Todas marcadas como leídas'})

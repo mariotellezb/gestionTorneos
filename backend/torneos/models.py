@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.contrib.auth.models import User
 
 # 1. USUARIOS (Sustituye a tu localStorage 'users')
 class CustomUser(AbstractUser):
@@ -73,6 +72,27 @@ class Match(models.Model):
 
     def __str__(self):
         return f"{self.homeTeam} vs {self.awayTeam} - {self.tournament}"
+
+# 5. NOTIFICACIONES
+class Notification(models.Model):
+    NOTIFICATION_TYPES = (
+        ('join_request', 'Solicitud de Ingreso'),
+        ('request_accepted', 'Solicitud Aceptada'),
+        ('request_rejected', 'Solicitud Rechazada'),
+        ('tournament_update', 'Actualización de Torneo'),
+    )
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=100)
+    message = models.TextField()
+    type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='tournament_update')
+    is_read = models.BooleanField(default=False)
+    tournamentId = models.IntegerField(null=True, blank=True) # Para saber a dónde redirigir
+    requestId = models.IntegerField(null=True, blank=True)    # Si aplica a una solicitud
+    createdAt = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
     
 class TournamentRequest(models.Model):
     # 1. Las opciones deben ir PRIMERO, adentro de la clase

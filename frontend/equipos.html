@@ -52,23 +52,13 @@
             </div>
 
             <!-- LISTA DE EQUIPOS -->
-            <table>
-                <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Descripción</th>
-                        <th>Capitán</th>
-                        <th>Miembros</th>
-                        <th>Fecha Registro</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody id="teamsTable">
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: #cbd5e1;">Cargando equipos...</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="container-fluid mt-4" style="max-width: 1400px; padding: 0 20px;">
+                <h2 style="color: #fff; margin-bottom: 20px;">Directorio de Equipos</h2>
+
+                <div id="teamsContainer">
+                    <p style="color: #94a3b8; text-align: center;">Cargando equipos...</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -115,6 +105,8 @@ let allUsers = []; // Guardaremos los usuarios aquí temporalmente
 
 document.addEventListener('DOMContentLoaded', async function() {
     if (!app.checkAuth()) return;
+    app.initializeNavigation();
+    loadTeams();
     
     const currentUser = app.currentUser;
     if (currentUser) {
@@ -131,8 +123,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     }
 
-    await loadTeams();
-    app.initializeNavigation();
 
     document.getElementById('createTeamBtn').addEventListener('click', openCreateModal);
     document.getElementById('teamForm').addEventListener('submit', saveTeam);
@@ -141,52 +131,65 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 async function loadTeams() {
     try {
-        // Obtenemos todo
         const [tournaments, teams] = await Promise.all([
             app.fetchAPI('/tournaments/'),
             app.fetchAPI('/teams/')
         ]);
 
-        // Asegúrate de que el contenedor de la lista en tu equipos.html tenga id="teamsContainer"
         const container = document.getElementById('teamsContainer'); 
         if (!container) return;
+
+        const currentUser = app.currentUser;
+        const currentUserId = currentUser ? currentUser.id : null;
 
         let html = '';
 
         tournaments.forEach(tournament => {
-            // Buscamos los equipos cuyo ID esté dentro del arreglo tournament.teams
-            const tournamentTeams = teams.filter(team => {
-                return tournament.teams && tournament.teams.includes(team.id);
-            });
+            const tournamentTeams = teams.filter(team => tournament.teams && tournament.teams.includes(team.id));
 
-            // Solo dibujamos la sección si el torneo tiene equipos
             if (tournamentTeams.length > 0) {
                 html += `
                 <div style="margin-bottom: 30px; background: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #334155;">
                     <h3 style="color: #f59e0b; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #475569; padding-bottom: 10px;">
                         🏆 Torneo: ${tournament.name}
                     </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
                 `;
 
-                // Dibujamos cada equipo como una tarjeta bonita dentro de su torneo
                 tournamentTeams.forEach(team => {
                     const totalJugadores = (team.members ? team.members.length : 0) + (team.captain ? 1 : 0);
+                    const isCaptain = team.captain === currentUserId || team.captain_id === currentUserId;
+                    const miembros = team.members || []; 
+                    const isMember = miembros.includes(currentUserId);
+                    
+                    let actionBtn = '';
+                    if (currentUserId) { 
+                        if (isCaptain) {
+                            actionBtn = `<span style="background: #fbbf24; color: #000; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">👑 Eres Capitán</span>`;
+                        } else if (isMember) {
+                            actionBtn = `<span style="background: #10b981; color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">✓ Eres Miembro</span>`;
+                        } else {
+                            actionBtn = `<button class="btn btn-primary btn-sm" style="font-weight: bold; border-radius: 6px;" onclick="joinTeam(${team.id})">➕ Unirme</button>`;
+                        }
+                    }
+
                     html += `
-                        <div style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #38bdf8;">
-                            <strong style="color: #fff; font-size: 16px;">🛡️ ${team.name}</strong>
-                            <p style="color: #94a3b8; font-size: 13px; margin: 5px 0 0 0;">👥 ${totalJugadores} Jugador(es)</p>
+                        <div style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #38bdf8; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong style="color: #fff; font-size: 16px;">🛡️ ${team.name}</strong>
+                                <p style="color: #94a3b8; font-size: 13px; margin: 5px 0 0 0;">👥 ${totalJugadores} Jugador(es)</p>
+                            </div>
+                            <div>
+                                ${actionBtn}
+                            </div>
                         </div>
                     `;
                 });
 
-                html += `
-                    </div>
-                </div>`;
+                html += `</div></div>`;
             }
         });
 
-        // Mensaje por si todos los torneos están vacíos
         if (html === '') {
             html = '<div style="text-align: center; padding: 20px; color: #94a3b8; background: #1e293b; border-radius: 8px; border: 1px dashed #475569;">No hay equipos registrados en ningún torneo todavía.</div>';
         }
@@ -194,7 +197,27 @@ async function loadTeams() {
         container.innerHTML = html;
 
     } catch (error) {
-        console.error("Error al cargar la lista clasificada de equipos:", error);
+        console.error("Error al cargar la lista de equipos:", error);
+    }
+}
+
+// ¡Esta es la función que hace que el botón funcione!
+async function joinTeam(teamId) {
+    if (!confirm('¿Estás seguro de que deseas unirte a este equipo como jugador?')) return;
+    
+    try {
+        const currentUser = app.currentUser;
+        await app.fetchAPI(`/teams/${teamId}/join/`, {
+            method: 'POST',
+            body: JSON.stringify({ user_id: currentUser.id }) 
+        });
+        
+        app.showAlert('¡Te has unido al equipo exitosamente!', 'success');
+        loadTeams(); // Recargamos para que el botón cambie a "✓ Eres Miembro"
+        
+    } catch (error) {
+        console.error("Error al unirse al equipo:", error);
+        app.showAlert('Error al unirse. Verifica si ya eres miembro.', 'danger');
     }
 }
 
@@ -295,29 +318,6 @@ function filterTeams() {
         if (index === 0) return;
         row.style.display = row.textContent.toLowerCase().includes(searchValue) ? '' : 'none';
     });
-}
-
-async function joinTeam(teamId) {
-    if (!confirm('¿Estás seguro de que deseas unirte a este equipo?')) return;
-    
-    try {
-        // Hacemos la petición al nuevo endpoint que creamos en Django
-        await app.fetchAPI(`/teams/${teamId}/join/`, {
-            method: 'POST',
-            body: JSON.stringify({}) // No necesitamos enviar datos, Django sabe quién eres por tu token
-        });
-        
-        app.showAlert('¡Bienvenido al equipo! Ya eres miembro oficial.', 'success');
-        
-        // Recargamos la pantalla para que desaparezca el botón de "Unirse"
-        if (typeof loadTournaments === 'function') loadTournaments();
-        if (typeof loadTeams === 'function') loadTeams();
-        app.closeModal('detailsModal'); // Si estabas viendo los detalles, cerramos la ventana
-        
-    } catch (error) {
-        console.error("Error al unirse:", error);
-        app.showAlert('No se pudo unir al equipo. Verifica si ya eres miembro.', 'danger');
-    }
 }
 
 </script>

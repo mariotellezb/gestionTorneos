@@ -297,8 +297,7 @@ class App {
         window.location.href = 'torneos.html?action=create';
     }
 
-    // ======================== NOTIFICATIONS (MANTENIDO LOCAL TEMPORALMENTE) ========================
-    // Nota: Mantenemos db.algo() aquí temporalmente hasta crear los modelos de Django
+    // ======================== NOTIFICATIONS (CONECTADO A DJANGO) ========================
     toggleNotifications() {
         const dropdown = document.getElementById('notificationsDropdown');
         if (dropdown) {
@@ -307,38 +306,46 @@ class App {
         }
     }
 
-    loadNotifications() {
-        if (!this.currentUser || typeof db === 'undefined') return;
+    async loadNotifications() {
+        if (!this.currentUser) return;
         
-        const notifications = db.getNotifications(this.currentUser.id);
-        const notificationsList = document.getElementById('notificationsList');
-        const badge = document.getElementById('notificationBadge');
-        
-        if (notificationsList) {
-            if (notifications.length === 0) {
-                notificationsList.innerHTML = '<p class="no-notifications">No hay notificaciones</p>';
-            } else {
-                notificationsList.innerHTML = notifications.map(n => `
-                    <div class="notification-item ${n.read ? 'read' : 'unread'}" onclick="app.handleNotificationClick(${n.id}, '${n.type}', ${n.tournamentId || 'null'}, ${n.requestId || 'null'})">
-                        <div class="notification-icon-${n.type}">${this.getNotificationIcon(n.type)}</div>
-                        <div class="notification-content">
-                            <p class="notification-title">${n.title}</p>
-                            <p class="notification-message">${n.message}</p>
-                            <p class="notification-time">${this.formatDate(n.createdAt)}</p>
+        try {
+            // Descargamos las notificaciones reales de Django
+            const notifications = await this.fetchAPI('/notifications/');
+            
+            const notificationsList = document.getElementById('notificationsList');
+            const badge = document.getElementById('notificationBadge');
+            
+            if (notificationsList) {
+                if (notifications.length === 0) {
+                    notificationsList.innerHTML = '<p class="no-notifications" style="padding: 15px; text-align: center; color: #94a3b8;">No hay notificaciones</p>';
+                } else {
+                    notificationsList.innerHTML = notifications.map(n => `
+                        <div class="notification-item ${n.is_read ? 'read' : 'unread'}" style="padding: 10px; border-bottom: 1px solid #334155; cursor: pointer; background: ${n.is_read ? 'transparent' : '#1e293b'};" 
+                             onclick="app.handleNotificationClick(${n.id}, '${n.type}', ${n.tournamentId || 'null'}, ${n.requestId || 'null'})">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <div class="notification-icon">${this.getNotificationIcon(n.type)}</div>
+                                <div class="notification-content">
+                                    <p style="margin: 0; color: #38bdf8; font-size: 14px; font-weight: bold;">${n.title}</p>
+                                    <p style="margin: 2px 0; color: #cbd5e1; font-size: 12px;">${n.message}</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                }
             }
-        }
-        
-        if (badge) {
-            const unreadCount = db.getUnreadNotificationsCount(this.currentUser.id);
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount;
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
+            
+            if (badge) {
+                const unreadCount = notifications.filter(n => !n.is_read).length;
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
             }
+        } catch (error) {
+            console.error("Error cargando notificaciones:", error);
         }
     }
 
@@ -352,23 +359,37 @@ class App {
         return icons[type] || '🔔';
     }
 
-    handleNotificationClick(notificationId, type, tournamentId, requestId) {
-        if (typeof db !== 'undefined') {
-            db.markNotificationAsRead(notificationId);
-        }
-        this.loadNotifications();
-        
-        if (type === 'join_request' && tournamentId) {
-            window.location.href = `torneos.html?tournament=${tournamentId}&view=requests`;
-        } else if (tournamentId) {
-            window.location.href = `torneos.html?tournament=${tournamentId}`;
+    async handleNotificationClick(notificationId, type, tournamentId, requestId) {
+        try {
+            // Le decimos a Django que marcamos esta alerta en específico como leída
+            await this.fetchAPI(`/notifications/${notificationId}/`, {
+                method: 'PATCH',
+                body: JSON.stringify({ is_read: true })
+            });
+            
+            this.loadNotifications(); // Recargamos para quitar el fondo oscuro
+            
+            // Redirigimos al usuario a donde tenga sentido
+            if (type === 'join_request' && tournamentId) {
+                window.location.href = `torneos.html?tournament=${tournamentId}&view=requests`;
+            } else if (tournamentId) {
+                window.location.href = `torneos.html?tournament=${tournamentId}`;
+            }
+        } catch (error) {
+            console.error("Error al marcar como leída:", error);
         }
     }
 
-    markAllNotificationsRead() {
-        if (!this.currentUser || typeof db === 'undefined') return;
-        db.markAllNotificationsAsRead(this.currentUser.id);
-        this.loadNotifications();
+    async markAllNotificationsRead() {
+        if (!this.currentUser) return;
+        
+        try {
+            // Disparamos la ruta especial que creamos en views.py
+            await this.fetchAPI('/notifications/mark-all-read/', { method: 'POST' });
+            this.loadNotifications();
+        } catch (error) {
+            console.error("Error al marcar todas como leídas:", error);
+        }
     }
 
     // ======================== TOURNAMENT REQUESTS (MANTENIDO LOCAL TEMPORALMENTE) ========================

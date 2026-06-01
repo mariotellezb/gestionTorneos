@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from torneos import views
 from torneos.views import TournamentViewSet, TeamViewSet, MatchViewSet, login_view, register_view, TournamentRequestViewSet
 
 # Creamos el enrutador automático de nuestra API
@@ -9,6 +10,7 @@ router.register(r'tournaments', TournamentViewSet)
 router.register(r'teams', TeamViewSet)
 router.register(r'matches', MatchViewSet)
 router.register(r'requests', TournamentRequestViewSet, basename='requests')
+router.register(r'notifications', views.NotificationViewSet, basename='notification')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
