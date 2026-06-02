@@ -53,13 +53,17 @@ class TeamViewSet(viewsets.ModelViewSet):
     queryset = Team.objects.all()
     serializer_class = TeamSerializer
 
+    # ==========================================
+    # SUPERPODER 1: UNIRSE AL EQUIPO
+    # ==========================================
     @action(detail=True, methods=['post'], url_path='join')
     def join(self, request, pk=None):
         try:
             team = self.get_object()
             
-            # 1. Atrapamos el ID explícito que mandará el JavaScript
             user_id = request.data.get('user_id')
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
             
             if user_id:
                 user = User.objects.get(id=user_id)
@@ -68,11 +72,9 @@ class TeamViewSet(viewsets.ModelViewSet):
             
             print(f"Intentando unir al usuario {user.username} al equipo {team.name}")
             
-            # 2. Verificamos si ya es miembro o capitán
             if user in team.members.all() or team.captain == user:
                 return Response({'error': 'Ya eres parte de este equipo'}, status=400)
                 
-            # 3. Lo agregamos a los miembros y GUARDAMOS
             team.members.add(user)
             team.save()
             
@@ -82,13 +84,52 @@ class TeamViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print(f"Error al unirse al equipo: {str(e)}")
             return Response({'error': str(e)}, status=400)
-    
+
+    # ==========================================
+    # SUPERPODER 2: SALIR DEL EQUIPO
+    # ==========================================
+    @action(detail=True, methods=['post'], url_path='leave')
+    def leave(self, request, pk=None):
+        try:
+            team = self.get_object()
+            user_id = request.data.get('user_id')
+            
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user = User.objects.get(id=user_id) if user_id else request.user
+            
+            if team.captain == user:
+                return Response({'error': 'El capitán no puede abandonar el equipo.'}, status=400)
+                
+            if user in team.members.all():
+                team.members.remove(user)
+                team.save()
+                return Response({'success': True, 'message': 'Has salido del equipo exitosamente'})
+            else:
+                return Response({'error': 'No eres miembro de este equipo'}, status=400)
+                
+        except Exception as e:
+            print(f"Error al salir del equipo: {str(e)}")
+            return Response({'error': str(e)}, status=400)
 
 
 class MatchViewSet(viewsets.ModelViewSet):
     queryset = Match.objects.all()
     serializer_class = MatchSerializer
 
+    def perform_create(self, serializer):
+        # Primero, guardamos el partido en la base de datos
+        partido = serializer.save()
+        
+        # Juntamos a los jugadores del equipo local y visitante
+        jugadores_local = list(partido.homeTeam.members.all())
+        jugadores_visitante = list(partido.awayTeam.members.all())
+        
+        # Si los capitanes no están en la lista de miembros, los agregamos para que también sepan
+        if partido.homeTeam.captain not in jugadores_local:
+            jugadores_local.append(partido.homeTeam.captain)
+        if partido.awayTeam.captain not in jugadores_visitante:
+            jugadores_visitante.append(partido.awayTeam.captain)
 
 
 from rest_framework.decorators import api_view
@@ -155,22 +196,3 @@ class TournamentRequestViewSet(viewsets.ModelViewSet):
     queryset = TournamentRequest.objects.all()
     serializer_class = TournamentRequestSerializer
 
-
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from .models import Notification
-from .serializers import NotificationSerializer
-
-class NotificationViewSet(viewsets.ModelViewSet):
-    serializer_class = NotificationSerializer
-
-    # Solo te devuelve TUS notificaciones, ordenadas de la más nueva a la más vieja
-    def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by('-createdAt')
-
-    # Acción especial para el botón "Marcar todas como leídas"
-    @action(detail=False, methods=['post'], url_path='mark-all-read')
-    def mark_all_read(self, request):
-        notificaciones = self.get_queryset().filter(is_read=False)
-        notificaciones.update(is_read=True)
-        return Response({'success': True, 'message': 'Todas marcadas como leídas'})

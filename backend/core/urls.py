@@ -10,7 +10,6 @@ router.register(r'tournaments', TournamentViewSet)
 router.register(r'teams', TeamViewSet)
 router.register(r'matches', MatchViewSet)
 router.register(r'requests', TournamentRequestViewSet, basename='requests')
-router.register(r'notifications', views.NotificationViewSet, basename='notification')
 
 urlpatterns = [
     path('admin/', admin.site.urls),
