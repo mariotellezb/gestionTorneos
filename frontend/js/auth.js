@@ -1,5 +1,5 @@
 // ======================== LOGIN (CONECTADO A DJANGO) ========================
-var API_BASE_URL = 'http://127.0.0.1:8000/api';
+var API_BASE_URL = 'https://backend-troyan-legacy.onrender.com/api/login/';
 
 const loginForm = document.getElementById("loginForm");
 
