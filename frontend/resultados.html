@@ -94,14 +94,38 @@
     </div>
 </div>
 
-<!-- MODAL REGISTRAR RESULTADO -->
-<div id="resultModal" class="modal">
-    <div class="modal-content">
+<div id="editMatchModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
-            <h2 id="modalTitle">Registrar Resultado</h2>
-            <button type="button" class="modal-close" onclick="app.closeModal('resultModal')">&times;</button>
+            <h2>Actualizar Resultado</h2>
+            <button type="button" class="modal-close" onclick="app.closeModal('editMatchModal')">&times;</button>
         </div>
-        <div id="resultModalContent"></div>
+        <form id="editMatchForm">
+            <div class="form-columns" style="grid-template-columns: 1fr 1fr; text-align: center; gap: 20px;">
+                <div class="form-column">
+                    <label id="homeTeamLabel" style="font-weight: bold; color: #38bdf8; font-size: 18px;">Local</label>
+                    <input type="number" id="homeScoreInput" min="0" required style="font-size: 24px; text-align: center; height: 60px;">
+                </div>
+                <div class="form-column">
+                    <label id="awayTeamLabel" style="font-weight: bold; color: #38bdf8; font-size: 18px;">Visitante</label>
+                    <input type="number" id="awayScoreInput" min="0" required style="font-size: 24px; text-align: center; height: 60px;">
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Estado del Partido</label>
+                <select id="matchStatusInput" required>
+                    <option value="scheduled">Programado</option>
+                    <option value="in_progress">En Curso</option>
+                    <option value="finished">Finalizado</option>
+                </select>
+            </div>
+            
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Guardar Resultado</button>
+                <button type="button" class="btn btn-secondary" onclick="app.closeModal('editMatchModal')">Cancelar</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -168,19 +192,33 @@ function displayResults(matches) {
         const aScore = match.awayScore ?? match.away_score;
         const resultText = (hScore !== null && aScore !== null) ? `${hScore} - ${aScore}` : 'Pendiente';
 
+        // 🔥 NUEVO: Verificamos si el usuario actual es el dueño exacto de este torneo
+        const currentUser = app.currentUser;
+        const isTournamentOrganizer = currentUser && tournament && (tournament.organizer === currentUser.id || tournament.organizer_id === currentUser.id);
+        // Ahora el botón se muestra si eres el dueño del torneo, o si eres Admin
+        const canEdit = isTournamentOrganizer || app.isAdmin() || (typeof app.isOrganizer === 'function' && app.isOrganizer());
+
         row.innerHTML = `
             <td>${tournament ? tournament.name : 'Desc'}</td>
             <td>${homeTeam ? homeTeam.name : 'Desc'}</td>
-            <td style="font-weight: bold; font-size: 16px;">${resultText}</td>
+            <td style="font-weight: bold; font-size: 16px; text-align: center;">${resultText}</td>
             <td>${awayTeam ? awayTeam.name : 'Desc'}</td>
             <td>${app.formatDate(match.date)}</td>
             <td>${match.location || ''}</td>
             <td>
-                ${(app.isOrganizer() || app.isAdmin()) ? `
-                    <button class="btn btn-secondary" style="padding: 5px 10px;" onclick="editResult(${match.id})">Registrar</button>
+                ${canEdit ? `
+                    <button class="btn btn-warning" style="padding: 5px 10px;" onclick="openEditMatchModal(
+                        ${match.id}, 
+                        '${homeTeam ? homeTeam.name : 'Desc'}', 
+                        '${awayTeam ? awayTeam.name : 'Desc'}', 
+                        ${hScore}, 
+                        ${aScore}, 
+                        '${match.status}'
+                    )">✏️ Editar Resultado</button>
                 ` : ''}
             </td>
         `;
+        
         tbody.appendChild(row);
     });
 }
@@ -317,6 +355,57 @@ function filterResults() {
     });
     displayResults(filtered);
 }
+
+let currentEditingMatchId = null;
+
+// Función para abrir el modal y precargar los datos
+function openEditMatchModal(matchId, homeTeamName, awayTeamName, homeScore, awayScore, status) {
+    currentEditingMatchId = matchId;
+    
+    // Ponemos los nombres de los equipos
+    document.getElementById('homeTeamLabel').textContent = homeTeamName;
+    document.getElementById('awayTeamLabel').textContent = awayTeamName;
+    
+    // Precargamos los marcadores si ya existen, si no, ponemos 0
+    document.getElementById('homeScoreInput').value = (homeScore !== null && homeScore !== 'null' && homeScore !== undefined) ? homeScore : 0;
+    document.getElementById('awayScoreInput').value = (awayScore !== null && awayScore !== 'null' && awayScore !== undefined) ? awayScore : 0;
+    
+    // Precargamos el estado
+    document.getElementById('matchStatusInput').value = status || 'scheduled';
+    
+    app.showModal('editMatchModal');
+}
+
+// Evento que se dispara al darle a "Guardar"
+document.getElementById('editMatchForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const data = {
+        homeScore: parseInt(document.getElementById('homeScoreInput').value),
+        awayScore: parseInt(document.getElementById('awayScoreInput').value),
+        status: document.getElementById('matchStatusInput').value
+    };
+    
+    try {
+        // En Django REST, usar PATCH permite actualizar solo campos específicos
+        await app.fetchAPI(`/matches/${currentEditingMatchId}/`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        });
+        
+        app.showAlert('¡Resultado actualizado correctamente!', 'success');
+        app.closeModal('editMatchModal');
+        
+        // ¡IMPORTANTE! Aquí debes llamar a la función que recarga tu tabla
+        // Por ejemplo: loadMatches(); o como se llame en tu archivo actual.
+        if (typeof loadMatches === 'function') loadMatches(); 
+        
+    } catch (error) {
+        console.error("Error al actualizar partido:", error);
+        app.showAlert('Error al guardar el resultado.', 'danger');
+    }
+});
+
 </script>
 
 <!-- Footer -->

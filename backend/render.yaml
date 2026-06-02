@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: troyan-legacy-api
+    runtime: python
+    buildCommand: "pip install -r requirements.txt && python manage.py migrate"
+    startCommand: "gunicorn backend.wsgi:application"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: troyan-legacy-db
+      - key: SECRET_KEY
+        generate: true
+      - key: WEB_CONCURRENCY
+        value: 4

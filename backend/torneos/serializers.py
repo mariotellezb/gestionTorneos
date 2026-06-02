@@ -16,19 +16,15 @@ class TeamSerializer(serializers.ModelSerializer):
         fields = '__all__' 
         
         # Opción B (Si tienes una lista manual, asegúrate de agregar 'members'):
-        # fields = ['id', 'name', 'description', 'captain', 'members', 'registeredDate', 'createdAt']
+        # fields = ['id', 'name', 'description', 'members', 'registeredDate', 'createdAt']
 
 class MatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
         fields = '__all__'
 
-# No olvides importar el modelo arriba: from .models import Tournament, Team, Match, TournamentRequest
 
 class TournamentRequestSerializer(serializers.ModelSerializer):
-    tournament_name = serializers.CharField(source='tournament.name', read_only=True)
-    user_name = serializers.CharField(source='user.first_name', read_only=True)
-
     class Meta:
         model = TournamentRequest
         fields = '__all__'

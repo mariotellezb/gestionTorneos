@@ -9,7 +9,6 @@
 <body>
 
 <div class="main-layout">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
@@ -27,11 +26,10 @@
             </ul>
         </nav>
         <div class="user-info">
-            <p id="userName" style="margin-bottom: 5px;"></p>
-            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <p id="userName" class="user-name-text"></p>
+            <p id="userRole" class="user-role-text"></p>
             
-            <!-- EL BOTÓN DEL TEMA -->
-            <button id="themeToggleBtn" onclick="app.toggleTheme()" style="width: 100%; padding: 8px; margin-bottom: 10px; margin-top: 10px; background: transparent; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+            <button id="themeToggleBtn" onclick="app.toggleTheme()" class="theme-toggle-btn">
                 ☀️ Modo Claro
             </button>
             
@@ -39,7 +37,6 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <div class="main-content">
         <div class="header">
             <h1>Gestión de Torneos</h1>
@@ -54,7 +51,6 @@
         <div class="content">
             <div id="alert" class="alert"></div>
 
-            <!-- FILTROS Y BÚSQUEDA -->
             <div class="card">
                 <form id="filterForm">
                     <div class="form-group" style="margin-bottom: 0;">
@@ -63,10 +59,8 @@
                 </form>
             </div>
 
-            <!-- LISTA DE TORNEOS -->
             <div id="tournamentsContainer"></div>
 
-            <!-- TABLA DE TORNEOS (fallback) -->
             <table>
                 <thead>
                     <tr>
@@ -90,7 +84,6 @@
     </div>
 </div>
 
-<!-- MODAL CREAR/EDITAR TORNEO -->
 <div id="tournamentModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -148,7 +141,6 @@
     </div>
 </div>
 
-<!-- MODAL VER DETALLES -->
 <div id="detailsModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -159,7 +151,6 @@
     </div>
 </div>
 
-<!-- MODAL SOLICITUDES DE UNIÓN -->
 <div id="requestsModal" class="modal">
     <div class="modal-content" style="max-width: 600px;">
         <div class="modal-header">
@@ -172,7 +163,6 @@
     </div>
 </div>
 
-<!-- MODAL REGISTRO A TORNEO -->
 <div id="joinTournamentModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -188,10 +178,6 @@
             <div class="form-group">
                 <label>Nombre del Equipo</label>
                 <input type="text" id="joinTeamName" placeholder="Ingresa el nombre de tu equipo" required>
-            </div>
-            <div class="form-group">
-                <label>Nombre del Capitán</label>
-                <input type="text" id="joinCaptainName" placeholder="Nombre del capitán del equipo" required>
             </div>
             <div class="form-group">
                 <label>Teléfono de Contacto</label>
@@ -230,7 +216,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const createBtn = document.getElementById('createTournamentBtn');
         const requestsBtn = document.getElementById('viewRequestsBtn');
         
-        // Habilitamos los botones temporalmente para todos
         if (createBtn) createBtn.style.display = 'inline-block';
         if (requestsBtn) requestsBtn.style.display = 'inline-block';
     }
@@ -238,16 +223,24 @@ document.addEventListener('DOMContentLoaded', function() {
     loadTournaments();
     app.initializeNavigation();
 
-    // Event listeners
     document.getElementById('createTournamentBtn').addEventListener('click', openCreateModal);
     document.getElementById('tournamentForm').addEventListener('submit', saveTournament);
     document.getElementById('searchTournament').addEventListener('input', filterTournaments);
     
     const joinForm = document.getElementById('joinTournamentForm');
     if (joinForm) joinForm.addEventListener('submit', submitJoinRequest);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'new') {
+        setTimeout(() => {
+            if (typeof openCreateModal === 'function') {
+                openCreateModal();
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }, 500);
+    }
 });
 
-// ======================= CONECTADO A DJANGO =======================
 async function loadTournaments() {
     try {
         const [tournaments, requests] = await Promise.all([
@@ -293,7 +286,7 @@ async function loadTournaments() {
                     ${!isOrganizer && currentUser && !hasPendingRequest && teamsCount < (tournament.maxTeams || tournament.max_teams) ? `
                         <button class="btn btn-primary" style="padding: 5px 10px;" onclick="openJoinTournament(${tournament.id})">Inscribir Equipo</button>
                     ` : ''}
-                    ${hasPendingRequest ? `<span style="color: #f59e0b; font-size: 12px;">Pendiente</span>` : ''}
+                    ${hasPendingRequest ? `<span class="badge-pending">Pendiente</span>` : ''}
                     ${canEdit ? `
                         <button class="btn btn-warning" style="padding: 5px 10px;" onclick="editTournament(${tournament.id})">Editar</button>
                         <button class="btn btn-danger" style="padding: 5px 10px;" onclick="deleteTournament(${tournament.id})">Eliminar</button>
@@ -387,75 +380,95 @@ async function viewTournamentDetails(tournamentId) {
             app.fetchAPI('/teams/')
         ]);
 
-        // Como el Torneo es el dueño de la relación, leemos su lista 'tournament.teams'
-        // y filtramos allTeams basándonos en si están dentro de esa lista.
         const teams = allTeams.filter(team => {
             if (!tournament.teams) return false;
-            // Busca si el ID de este equipo existe en la lista de equipos del torneo
             return tournament.teams.some(t => t === team.id || t.id === team.id);
         });
 
         const currentUser = app.currentUser;
         const currentUserId = currentUser ? currentUser.id : null;
+        
+        // Revisamos si el usuario actual ya está en ALGÚN equipo de este torneo
+        const isUserInAnyTeam = currentUserId ? teams.some(team => (team.members || []).includes(currentUserId)) : false;
+        
+        // 🔥 NUEVO: Detectamos si el usuario actual es el organizador del torneo o un administrador
+        const isOrganizer = currentUserId && (tournament.organizer === currentUserId || tournament.organizer_id === currentUserId || app.isAdmin());
 
-        let detailsHTML = `
-            <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #334155;">
-                <p style="margin-bottom: 5px;"><strong>🏅 Deporte:</strong> ${tournament.sport}</p>
-                <p style="margin-bottom: 0;"><strong>📊 Progreso de Inscripción:</strong> ${teams.length} de ${tournament.maxTeams || tournament.max_teams} equipos permitidos</p>
-            </div>
-            
-            <div>
-                <h4 style="margin-bottom: 15px; color: #38bdf8;">🛡️ Equipos Participantes</h4>
-                ${teams.length > 0 ? `
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        ${teams.map(team => {
-                            const isCaptain = team.captain === currentUserId || team.captain_id === currentUserId;
-                            const miembros = team.members || []; 
-                            const isMember = miembros.includes(currentUserId);
-                            
-                            // 1 al conteo por el capitán
-                            const totalJugadores = miembros.length + (team.captain ? 1 : 0); 
-                            
-                            let actionBtn = '';
-                            if (currentUserId) { 
-                                if (isCaptain) {
-                                    actionBtn = `<span style="background: #fbbf24; color: #000; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">👑 Eres Capitán</span>`;
-                                } else if (isMember) {
-                                    // Se crea botón rojo para salir del equipo
-                                    actionBtn = `<button class="btn btn-danger" style="padding: 6px 15px; font-weight: bold; border-radius: 6px;" onclick="app.leaveTeam(${team.id})">🚪 Salir del Equipo</button>`;
-                                } else {
-                                    // Se crea botón verde para unirse al equipo
-                                    actionBtn = `<button class="btn btn-primary" style="padding: 6px 15px; font-weight: bold; border-radius: 6px;" onclick="app.joinTeam(${team.id})">➕ Unirme</button>`;
-                                }
-                            }
+        let teamsListHTML = '';
+        
+        if (teams.length > 0) {
+            const teamsCards = teams.map(team => {
+                const miembros = team.members || []; 
+                const isMember = currentUserId ? miembros.includes(currentUserId) : false;
+                const totalJugadores = miembros.length; 
+                
+                let actionBtn = '';
+                if (currentUserId) { 
+                    if (isMember) {
+                        actionBtn = '<button class="btn btn-danger btn-modal-action" onclick="app.leaveTeam(' + team.id + ')">🚪 Salir del Equipo</button>';
+                    } else if (!isUserInAnyTeam) {
+                        actionBtn = '<button class="btn btn-primary btn-modal-action" onclick="app.joinTeam(' + team.id + ')">➕ Unirme</button>';
+                    } else {
+                        actionBtn = '<span style="color: #94a3b8; font-size: 13px; font-weight: bold;">Ya estás en otro equipo</span>';
+                    }
+                }
 
-                            return `
-                            <div style="padding: 15px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                                <div>
-                                    <strong style="font-size: 16px; color: #fff;">${team.name}</strong>
-                                    <div style="font-size: 13px; color: #94a3b8; margin-top: 5px;">👥 ${totalJugadores} Jugador(es)</div>
-                                </div>
-                                <div>
-                                    ${actionBtn}
-                                </div>
-                            </div>`;
-                        }).join('')}
-                    </div>
-                ` : `
-                    <div style="padding: 20px; text-align: center; background: #1e293b; border-radius: 8px; border: 1px dashed #475569;">
-                        <p style="color: #94a3b8; margin: 0;">No hay equipos registrados aún.</p>
-                        <p style="color: #64748b; font-size: 13px; margin-top: 5px;">¡Sé el primero en inscribir tu equipo!</p>
-                    </div>
-                `}
-            </div>
-        `;
+                // 🔥 NUEVO: Botón de Eliminar exclusivo para el Organizador
+                let deleteBtn = '';
+                if (isOrganizer) {
+                    // Usamos un rojo un poco más oscuro (#b91c1c) para que se diferencie del botón de "Salir"
+                    deleteBtn = '<button class="btn btn-danger btn-modal-action" style="margin-left: 10px; background-color: #b91c1c;" onclick="deleteTeamFromTournament(' + team.id + ')">🗑️ Eliminar</button>';
+                }
+
+                return '<div class="tournament-team-item">' +
+                       '<div>' +
+                       '<div class="tournament-team-name">' + team.name + '</div>' +
+                       '<div class="tournament-team-players">👥 ' + totalJugadores + ' Jugador(es)</div>' +
+                       '</div>' +
+                       // Agrupamos los botones en un div flex para que se formen uno al lado del otro
+                       '<div style="display: flex; align-items: center;">' + actionBtn + deleteBtn + '</div>' +
+                       '</div>';
+            });
+            teamsListHTML = '<div class="tournament-teams-list">' + teamsCards.join('') + '</div>';
+        } else {
+            teamsListHTML = '<div class="tournament-empty-state">' +
+                            '<p class="tournament-empty-text">No hay equipos registrados aún.</p>' +
+                            '<p class="tournament-empty-subtext">¡Sé el primero en inscribir tu equipo!</p>' +
+                            '</div>';
+        }
+
+        const detailsHTML = '<div class="tournament-details-header">' +
+                            '<p><strong>🏅 Deporte:</strong> ' + tournament.sport + '</p>' +
+                            '<p><strong>📊 Progreso de Inscripción:</strong> ' + teams.length + ' de ' + (tournament.maxTeams || tournament.max_teams) + ' equipos permitidos</p>' +
+                            '</div>' +
+                            '<div>' +
+                            '<h4 class="tournament-details-title">🛡️ Equipos Participantes</h4>' +
+                            teamsListHTML +
+                            '</div>';
 
         document.getElementById('detailsContent').innerHTML = detailsHTML;
-        document.getElementById('detailsTitle').textContent = `Torneo: ${tournament.name}`;
+        document.getElementById('detailsTitle').textContent = 'Torneo: ' + tournament.name;
         app.showModal('detailsModal');
     } catch (error) {
         console.error("Error al cargar detalles:", error);
         app.showAlert('Error al cargar los detalles del torneo', 'danger');
+    }
+}
+
+// 🔥 NUEVA FUNCIÓN: Se encarga de borrar el equipo de la base de datos
+async function deleteTeamFromTournament(teamId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este equipo del torneo? Esta acción eliminará a todos los jugadores de este equipo.')) return;
+    
+    try {
+        // En Django REST Framework, hacer un DELETE a la ruta del equipo lo borra por completo
+        await app.fetchAPI(`/teams/${teamId}/`, { method: 'DELETE' });
+        
+        app.showAlert('Equipo eliminado exitosamente', 'success');
+        app.closeModal('detailsModal'); // Cerramos el modal para refrescar la vista
+        loadTournaments(); // Recargamos la tabla de torneos de fondo
+    } catch (error) {
+        console.error("Error al eliminar equipo:", error);
+        app.showAlert('Error al eliminar el equipo', 'danger');
     }
 }
 
@@ -476,6 +489,7 @@ async function openJoinTournament(tournamentId) {
     if (!currentUser) return app.showAlert('Debes iniciar sesión para unirte', 'danger');
 
     try {
+        // Bloqueo 1: Ver si ya tiene solicitud pendiente
         const requests = await app.fetchAPI('/requests/');
         const existingRequest = requests.find(r => 
             (r.tournament === tournamentId || r.tournament_id === tournamentId) && 
@@ -485,6 +499,24 @@ async function openJoinTournament(tournamentId) {
 
         if (existingRequest) {
             app.showAlert('Ya tienes una solicitud pendiente para este torneo', 'warning');
+            return;
+        }
+        
+        // Bloqueo 2 (REGLA DE 1 EQUIPO): Revisar si ya pertenece a un equipo de este torneo
+        const [tournament, allTeams] = await Promise.all([
+            app.fetchAPI(`/tournaments/${tournamentId}/`),
+            app.fetchAPI('/teams/')
+        ]);
+        
+        const teamsEnTorneo = allTeams.filter(team => {
+            if (!tournament.teams) return false;
+            return tournament.teams.some(t => t === team.id || t.id === team.id);
+        });
+
+        const yaEstaEnUnEquipo = teamsEnTorneo.some(team => (team.members || []).includes(currentUser.id));
+        
+        if (yaEstaEnUnEquipo) {
+            app.showAlert('Ya perteneces a un equipo en este torneo. Límite: 1 por usuario.', 'warning');
             return;
         }
 
@@ -498,21 +530,32 @@ async function openJoinTournament(tournamentId) {
 async function submitJoinRequest(e) {
     e.preventDefault();
     const currentUser = app.currentUser;
+    
+    // Obtenemos los valores directamente
+    const tournamentId = parseInt(document.getElementById('joinTournamentSelect').value);
+    const teamName = document.getElementById('joinTeamName').value;
+    const phone = document.getElementById('joinPhone').value;
+    const email = document.getElementById('joinEmail').value;
+    const notes = document.getElementById('joinNotes').value;
 
     const data = {
-        tournament: parseInt(document.getElementById('joinTournamentSelect').value),
+        tournament: tournamentId,
         user: currentUser.id,
-        team_name: document.getElementById('joinTeamName').value,
-        captain_name: document.getElementById('joinCaptainName').value,
-        phone: document.getElementById('joinPhone').value,
-        email: document.getElementById('joinEmail').value,
-        notes: document.getElementById('joinNotes').value,
+        team_name: teamName,
+        phone: phone,
+        email: email,
+        notes: notes,
         status: 'pending'
     };
 
     try {
+        // En lugar de llamar a una ruta compleja, usamos fetchAPI básico 
+        // para asegurar que el backend reciba el objeto tal cual
         await app.fetchAPI('/requests/', {
             method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify(data)
         });
         
@@ -521,7 +564,8 @@ async function submitJoinRequest(e) {
         document.getElementById('joinTournamentForm').reset();
         loadTournaments(); 
     } catch (error) {
-        app.showAlert('Error al enviar la solicitud', 'danger');
+        console.error("Error detallado:", error);
+        app.showAlert('Error al enviar la solicitud. Revisa la consola.', 'danger');
     }
 }
 
@@ -551,7 +595,6 @@ async function viewTournamentRequests() {
             content.innerHTML = myRequests.map(req => `
                 <div style="background: #334155; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                     <p style="margin-bottom: 10px;"><strong>Equipo:</strong> ${req.team_name}</p>
-                    <p style="margin-bottom: 5px;"><strong>Capitán:</strong> ${req.captain_name}</p>
                     <p style="margin-bottom: 5px;"><strong>Teléfono:</strong> ${req.phone}</p>
                     <p style="margin-bottom: 5px;"><strong>Email:</strong> ${req.email}</p>
                     <p style="margin-bottom: 5px;"><strong>Torneo:</strong> ${req.tournament_name || req.tournament}</p>
@@ -574,24 +617,29 @@ async function respondToRequest(requestId, accepted) {
     const newStatus = accepted ? 'accepted' : 'rejected';
     
     try {
+        // Obtenemos la solicitud completa para saber quién la hizo
         const req = await app.fetchAPI(`/requests/${requestId}/`);
-        const userId = req.user || req.user_id;
-        const tournamentId = req.tournament || req.tournament_id;
+        console.log("Datos de la solicitud recibidos:", req); // <--- AÑADE ESTO
+        const userId = req.user; // Este es el ID del usuario que solicitó unirse
+        const tournamentId = req.tournament;
 
         await app.fetchAPI(`/requests/${requestId}/`, {
             method: 'PATCH',
-            body: JSON.stringify({ status: newStatus })
+            body: JSON.stringify({ status: newStatus }),
+            headers: { 'Content-Type': 'application/json' }
         });
 
         if (accepted) {
+            // ENVIAMOS EL user_id AQUÍ
             await app.fetchAPI(`/tournaments/${tournamentId}/add-team/`, {
                 method: 'POST',
                 body: JSON.stringify({ 
                     team_name: req.team_name,
-                    user_id: userId 
-                })
+                    user_id: userId // <--- ESTO ES LO QUE FALTABA O FALLABA
+                }),
+                headers: { 'Content-Type': 'application/json' }
             });
-            app.showAlert('Solicitud aceptada. ¡Equipo y capitán registrados!', 'success');
+            app.showAlert('Solicitud aceptada. ¡Equipo registrado!', 'success');
         } else {
             app.showAlert('Solicitud rechazada', 'info');
         }
@@ -600,13 +648,13 @@ async function respondToRequest(requestId, accepted) {
         loadTournaments(); 
         
     } catch (error) {
+        console.error("Error al procesar:", error);
         app.showAlert('Ocurrió un error al procesar la solicitud.', 'danger');
     }
 }
 
 </script>
 
-<!-- Footer -->
 <footer class="footer">
     <div class="footer-content">
         <a href="terminos.html" class="footer-link">Términos y Condiciones</a>

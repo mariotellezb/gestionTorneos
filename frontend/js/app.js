@@ -1,15 +1,16 @@
 // ======================== APPLICATION UTILITIES (CONECTADA A DJANGO) ========================
 
 // URL base de tu API de Django
-var API_BASE_URL = 'http://127.0.0.1:8000/api';
+var API_BASE_URL = 'https://backend-troyan-legacy.onrender.com/api';
 
 class App {
     constructor() {
-        this.apiUrl = 'http://127.0.0.1:8000/api';
+        this.apiUrl = 'https://backend-troyan-legacy.onrender.com/api';
+        
         this.currentUser = JSON.parse(localStorage.getItem('user')) || null;
         this.accessToken = localStorage.getItem('access_token');
         this.refreshToken = localStorage.getItem('refresh_token');
-        
+
         // ¡Agrega esta línea!
         this.loadTheme();
     }

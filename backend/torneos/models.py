@@ -2,26 +2,21 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 
-# 1. USUARIOS (Sustituye a tu localStorage 'users')
 class CustomUser(AbstractUser):
-    # Heredamos de AbstractUser para aprovechar el sistema de login de Django
-    # Django ya incluye username, first_name, last_name, email y password
     ROLE_CHOICES = (
         ('administrador', 'Administrador'),
         ('organizador', 'Organizador'),
         ('usuario', 'Usuario'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='usuario')
-    # createdAt ya lo maneja Django por defecto al crear el usuario
 
     def __str__(self):
         return self.username
 
-# 2. EQUIPOS (Sustituye a tu localStorage 'teams')
 class Team(models.Model):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
-    captain = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, related_name='captain_of')
+    # 🔥 LÍNEA DE CAPTAIN ELIMINADA 🔥
     members = models.ManyToManyField(CustomUser, related_name='teams_joined')
     registeredDate = models.DateTimeField(auto_now_add=True)
     createdAt = models.DateTimeField(auto_now_add=True)
@@ -29,7 +24,6 @@ class Team(models.Model):
     def __str__(self):
         return self.name
 
-# 3. TORNEOS (Sustituye a tu localStorage 'tournaments')
 class Tournament(models.Model):
     STATUS_CHOICES = (
         ('active', 'Activo'),
@@ -52,7 +46,6 @@ class Tournament(models.Model):
     def __str__(self):
         return self.name
 
-# 4. PARTIDOS (Sustituye a tu localStorage 'matches')
 class Match(models.Model):
     STATUS_CHOICES = (
         ('scheduled', 'Programado'),
@@ -74,22 +67,18 @@ class Match(models.Model):
         return f"{self.homeTeam} vs {self.awayTeam} - {self.tournament}"
     
 class TournamentRequest(models.Model):
-    # 1. Las opciones deben ir PRIMERO, adentro de la clase
     STATUS_CHOICES = [
         ('pending', 'Pendiente'),
         ('accepted', 'Aceptado'),
         ('rejected', 'Rechazado'),
     ]
 
-    # 2. Los campos van DESPUÉS, con la misma alineación
-    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name='requests')
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name='requests')    
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, null=True, blank=True)
     team_name = models.CharField(max_length=100)
-    captain_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
     email = models.EmailField()
     notes = models.TextField(blank=True, null=True)
-    
-    # Aquí es donde usa STATUS_CHOICES de manera segura
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     requested_at = models.DateTimeField(auto_now_add=True)
 

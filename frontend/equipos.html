@@ -26,11 +26,10 @@
             </ul>
         </nav>
         <div class="user-info">
-            <p id="userName" style="margin-bottom: 5px;"></p>
-            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <p id="userName" class="user-name-text"></p>
+            <p id="userRole" class="user-role-text"></p>
             
-            <!-- EL BOTÓN DEL TEMA -->
-            <button id="themeToggleBtn" onclick="app.toggleTheme()" style="width: 100%; padding: 8px; margin-bottom: 10px; margin-top: 10px; background: transparent; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+            <button id="themeToggleBtn" onclick="app.toggleTheme()" class="theme-toggle-btn">
                 ☀️ Modo Claro
             </button>
             
@@ -111,8 +110,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (currentUser) {
         if (app.isAdmin()) {
             document.getElementById('adminLink').style.display = 'block';
-        }
-        if (app.isCaptain() || app.isAdmin() || app.isOrganizer()) {
             document.getElementById('createTeamBtn').style.display = 'inline-block';
         }
     }
@@ -138,24 +135,28 @@ async function loadTeams() {
             const tournamentTeams = teams.filter(team => tournament.teams && tournament.teams.includes(team.id));
 
             if (tournamentTeams.length > 0) {
+                // 🔥 REGLA DE 1 EQUIPO: Verificamos si el usuario está en ALGÚN equipo de ESTE torneo
+                const isUserInAnyTeam = currentUserId ? tournamentTeams.some(team => (team.members || []).includes(currentUserId)) : false;
+
                 html += `
                 <div class="team-tournament-container">
                     <h3 class="team-tournament-title">🏆 Torneo: ${tournament.name}</h3>
                     <div class="teams-grid">`;
 
                 tournamentTeams.forEach(team => {
-                    const totalJugadores = (team.members ? team.members.length : 0) + (team.captain ? 1 : 0);
-                    const isCaptain = team.captain === currentUserId || team.captain_id === currentUserId;
-                    const isMember = (team.members || []).includes(currentUserId);
+                    // Contamos a los jugadores reales
+                    const totalJugadores = team.members ? team.members.length : 0;
+                    const isMember = currentUserId ? (team.members || []).includes(currentUserId) : false;
                     
                     let actionBtn = '';
                     if (currentUserId) { 
-                        if (isCaptain) {
-                            actionBtn = `<span class="btn btn-warning btn-sm">👑 Capitán</span>`;
-                        } else if (isMember) {
-                            actionBtn = `<button class="btn btn-danger btn-sm" onclick="app.leaveTeam(${team.id})">🚪 Salir</button>`;
-                        } else {
+                        if (isMember) {
+                            actionBtn = `<button class="btn btn-danger btn-sm" onclick="app.leaveTeam(${team.id})">🚪 Salir del Equipo</button>`;
+                        } else if (!isUserInAnyTeam) {
                             actionBtn = `<button class="btn btn-primary btn-sm" onclick="app.joinTeam(${team.id})">➕ Unirme</button>`;
+                        } else {
+                            // Bloqueo visual
+                            actionBtn = `<span style="color: #94a3b8; font-size: 13px; font-weight: bold;">Ya estás en otro equipo</span>`;
                         }
                     }
 
@@ -190,8 +191,8 @@ async function saveTeam(e) {
     const data = {
         name: document.getElementById('teamName').value,
         description: document.getElementById('teamDescription').value,
-        captain: app.currentUser.id,
-        captain_id: app.currentUser.id
+        // Limpiamos los datos de capitán y pasamos al creador como primer miembro
+        members: [app.currentUser.id] 
     };
 
     try {
@@ -219,7 +220,6 @@ function filterTeams() {
 }
 </script>
 
-<!-- Footer -->
 <footer class="footer">
     <div class="footer-content">
         <a href="terminos.html" class="footer-link">Términos y Condiciones</a>

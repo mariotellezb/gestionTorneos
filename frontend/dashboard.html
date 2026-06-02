@@ -26,11 +26,10 @@
             </ul>
         </nav>
         <div class="user-info">
-            <p id="userName" style="margin-bottom: 5px;"></p>
-            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <p id="userName" class="user-name-text"></p>
+            <p id="userRole" class="user-role-text"></p>
             
-            <!-- EL BOTÓN DEL TEMA -->
-            <button id="themeToggleBtn" onclick="app.toggleTheme()" style="width: 100%; padding: 8px; margin-bottom: 10px; margin-top: 10px; background: transparent; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+            <button id="themeToggleBtn" onclick="app.toggleTheme()" class="theme-toggle-btn">
                 ☀️ Modo Claro
             </button>
             
@@ -62,7 +61,7 @@
                         </button>
                     </div>
                     <div class="action-card right">
-                        <button class="action-btn" id="createTournamentBtn" onclick="app.createTournament()">
+                        <button class="action-btn" id="createTournamentBtn" onclick="window.location.href='torneos.html?action=new'">
                             <span class="action-icon">🏆</span>
                             <span class="action-text">Crear torneo</span>
                         </button>
@@ -87,10 +86,6 @@
                 <div class="card-item">
                     <h4>Partidos Programados</h4>
                     <p class="stat-number text-orange" id="totalMatches">0</p>
-                </div>
-                <div class="card-item">
-                    <h4>Usuarios Registrados</h4>
-                    <p class="stat-number text-purple" id="totalUsers">0</p>
                 </div>
             </div>
 
@@ -184,15 +179,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 function loadStatistics(tournaments, teams, matches) {
     const activeTournaments = tournaments.filter(t => t.status === 'active').length;
 
-    let totalUsersCount = 0;
-    if (typeof db !== 'undefined' && db.getAllUsers) {
-        totalUsersCount = db.getAllUsers().length;
-    }
-
     document.getElementById('activeTournaments').textContent = activeTournaments;
     document.getElementById('totalTeams').textContent = teams.length;
     document.getElementById('totalMatches').textContent = matches.length;
-    document.getElementById('totalUsers').textContent = totalUsersCount;
 }
 
 function loadRecentTournaments(tournaments) {
@@ -215,7 +204,6 @@ function loadRecentTournaments(tournaments) {
         const statusMap = { 'active': 'Activo', 'completed': 'Completado', 'cancelled': 'Cancelado' };
         const statusEs = statusMap[tournament.status] || tournament.status;
 
-        // 🔥 AQUÍ: Quitamos los estilos en línea y usamos clases
         row.innerHTML = `
             <td>${tournament.name}</td>
             <td>${tournament.sport}</td>
