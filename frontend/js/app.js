@@ -5,8 +5,13 @@ var API_BASE_URL = 'http://127.0.0.1:8000/api';
 
 class App {
     constructor() {
-        this.currentPage = '';
-        this.currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        this.apiUrl = 'http://127.0.0.1:8000/api';
+        this.currentUser = JSON.parse(localStorage.getItem('user')) || null;
+        this.accessToken = localStorage.getItem('access_token');
+        this.refreshToken = localStorage.getItem('refresh_token');
+        
+        // ¡Agrega esta línea!
+        this.loadTheme();
     }
 
     // ==========================================
@@ -179,6 +184,97 @@ class App {
         return this.formatDate(dateString) + ' ' + new Date(dateString).toLocaleTimeString('es-ES');
     }
 
+    // ======================== TEMA (MODO CLARO/OSCURO) ========================
+    toggleTheme() {
+        const body = document.body;
+        body.classList.toggle('light-mode');
+        
+        const isLight = body.classList.contains('light-mode');
+        localStorage.setItem('troyan_theme', isLight ? 'light' : 'dark');
+        
+        // Cambiar el texto del botón si existe en la pantalla actual
+        const themeBtn = document.getElementById('themeToggleBtn');
+        if (themeBtn) {
+            themeBtn.innerHTML = isLight ? '🌙 Modo Oscuro' : '☀️ Modo Claro';
+        }
+    }
+
+    loadTheme() {
+        const savedTheme = localStorage.getItem('troyan_theme');
+        const themeBtn = document.getElementById('themeToggleBtn');
+        
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-mode');
+            if (themeBtn) themeBtn.innerHTML = '🌙 Modo Oscuro';
+        } else {
+            document.body.classList.remove('light-mode');
+            if (themeBtn) themeBtn.innerHTML = '☀️ Modo Claro';
+        }
+    }
+
+    // ======================== ACCIONES DE EQUIPOS GLOBALES ========================
+    async joinTeam(teamId) {
+        if (!confirm('¿Estás seguro de que deseas unirte a este equipo como jugador?')) return;
+        
+        try {
+            const currentUser = this.currentUser;
+            
+            const response = await this.fetchAPI(`/teams/${teamId}/join/`, {
+                method: 'POST',
+                body: JSON.stringify({ user_id: currentUser.id }) 
+            });
+            
+            if (response && response.error) {
+                this.showAlert(response.error, 'warning');
+                return; 
+            }
+            
+            this.showAlert('¡Te has unido al equipo exitosamente!', 'success');
+            
+            // Cerramos las ventanas (sin importar en qué pantalla estemos)
+            this.closeModal('detailsModal');
+            this.closeModal('teamDetailsModal');
+            
+            // Recargamos los datos
+            if (typeof loadTournaments === 'function') loadTournaments(); 
+            if (typeof loadTeams === 'function') loadTeams();
+            
+        } catch (error) {
+            console.error("Error técnico al unirse:", error);
+            // 🔥 AQUÍ ESTÁ LA MAGIA: Nos dirá exactamente por qué falló
+            this.showAlert('Falla de sistema: ' + error.message, 'danger');
+        }
+    }
+
+    async leaveTeam(teamId) {
+        if (!confirm('¿Estás seguro de que deseas salir de este equipo?')) return;
+        
+        try {
+            const currentUser = this.currentUser;
+            
+            const response = await this.fetchAPI(`/teams/${teamId}/leave/`, {
+                method: 'POST',
+                body: JSON.stringify({ user_id: currentUser.id }) 
+            });
+            
+            if (response && response.error) {
+                this.showAlert(response.error, 'warning');
+                return;
+            }
+            
+            this.showAlert('Has salido del equipo exitosamente', 'success');
+            this.closeModal('detailsModal');
+            this.closeModal('teamDetailsModal');
+            
+            if (typeof loadTournaments === 'function') loadTournaments(); 
+            if (typeof loadTeams === 'function') loadTeams();
+            
+        } catch (error) {
+            console.error("Error técnico al salir:", error);
+            this.showAlert('Falla de sistema: ' + error.message, 'danger');
+        }
+    }
+
     // ======================== FORM HELPERS ========================
     getFormData(formId) {
         const form = document.getElementById(formId);
@@ -297,102 +393,6 @@ class App {
         window.location.href = 'torneos.html?action=create';
     }
 
-    // ======================== NOTIFICATIONS (CONECTADO A DJANGO) ========================
-    toggleNotifications() {
-        const dropdown = document.getElementById('notificationsDropdown');
-        if (dropdown) {
-            dropdown.classList.toggle('active');
-            this.loadNotifications();
-        }
-    }
-
-    async loadNotifications() {
-        if (!this.currentUser) return;
-        
-        try {
-            // Descargamos las notificaciones reales de Django
-            const notifications = await this.fetchAPI('/notifications/');
-            
-            const notificationsList = document.getElementById('notificationsList');
-            const badge = document.getElementById('notificationBadge');
-            
-            if (notificationsList) {
-                if (notifications.length === 0) {
-                    notificationsList.innerHTML = '<p class="no-notifications" style="padding: 15px; text-align: center; color: #94a3b8;">No hay notificaciones</p>';
-                } else {
-                    notificationsList.innerHTML = notifications.map(n => `
-                        <div class="notification-item ${n.is_read ? 'read' : 'unread'}" style="padding: 10px; border-bottom: 1px solid #334155; cursor: pointer; background: ${n.is_read ? 'transparent' : '#1e293b'};" 
-                             onclick="app.handleNotificationClick(${n.id}, '${n.type}', ${n.tournamentId || 'null'}, ${n.requestId || 'null'})">
-                            <div style="display: flex; gap: 10px; align-items: center;">
-                                <div class="notification-icon">${this.getNotificationIcon(n.type)}</div>
-                                <div class="notification-content">
-                                    <p style="margin: 0; color: #38bdf8; font-size: 14px; font-weight: bold;">${n.title}</p>
-                                    <p style="margin: 2px 0; color: #cbd5e1; font-size: 12px;">${n.message}</p>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            }
-            
-            if (badge) {
-                const unreadCount = notifications.filter(n => !n.is_read).length;
-                if (unreadCount > 0) {
-                    badge.textContent = unreadCount;
-                    badge.style.display = 'inline-block';
-                } else {
-                    badge.style.display = 'none';
-                }
-            }
-        } catch (error) {
-            console.error("Error cargando notificaciones:", error);
-        }
-    }
-
-    getNotificationIcon(type) {
-        const icons = {
-            'join_request': '📩',
-            'request_accepted': '✅',
-            'request_rejected': '❌',
-            'tournament_update': '🏆'
-        };
-        return icons[type] || '🔔';
-    }
-
-    async handleNotificationClick(notificationId, type, tournamentId, requestId) {
-        try {
-            // Le decimos a Django que marcamos esta alerta en específico como leída
-            await this.fetchAPI(`/notifications/${notificationId}/`, {
-                method: 'PATCH',
-                body: JSON.stringify({ is_read: true })
-            });
-            
-            this.loadNotifications(); // Recargamos para quitar el fondo oscuro
-            
-            // Redirigimos al usuario a donde tenga sentido
-            if (type === 'join_request' && tournamentId) {
-                window.location.href = `torneos.html?tournament=${tournamentId}&view=requests`;
-            } else if (tournamentId) {
-                window.location.href = `torneos.html?tournament=${tournamentId}`;
-            }
-        } catch (error) {
-            console.error("Error al marcar como leída:", error);
-        }
-    }
-
-    async markAllNotificationsRead() {
-        if (!this.currentUser) return;
-        
-        try {
-            // Disparamos la ruta especial que creamos en views.py
-            await this.fetchAPI('/notifications/mark-all-read/', { method: 'POST' });
-            this.loadNotifications();
-        } catch (error) {
-            console.error("Error al marcar todas como leídas:", error);
-        }
-    }
-
-    // ======================== TOURNAMENT REQUESTS (MANTENIDO LOCAL TEMPORALMENTE) ========================
     showJoinRequestModal(tournamentId) {
         if (typeof db === 'undefined') return;
         
@@ -424,11 +424,18 @@ class App {
     }
 }
 
+
+
 window.app = new App();
 
 // Initialize app when page loads
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.location.href.includes('login.html') && !window.location.href.includes('signin.html') && !window.location.href.includes('index.html')) {
-        app.checkAuth();
+        if (app.checkAuth()) {
+            // ¡ESTE ES EL CABLE QUE FALTABA!
+            if (typeof app.loadNotifications === 'function') {
+                app.loadNotifications();
+            }
+        }
     }
 });

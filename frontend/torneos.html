@@ -29,6 +29,12 @@
         <div class="user-info">
             <p id="userName" style="margin-bottom: 5px;"></p>
             <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            
+            <!-- EL BOTÓN DEL TEMA -->
+            <button id="themeToggleBtn" onclick="app.toggleTheme()" style="width: 100%; padding: 8px; margin-bottom: 10px; margin-top: 10px; background: transparent; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+                ☀️ Modo Claro
+            </button>
+            
             <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
         </div>
     </aside>
@@ -41,7 +47,7 @@
                 <button id="viewRequestsBtn" class="btn btn-secondary btn-sm" style="display:none;" onclick="viewTournamentRequests()">
                     📋 Solicitudes
                 </button>
-                <button id="createTournamentBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Torneo</button>
+                <button id="createTournamentBtn" class="btn btn-success btn-sm" style="display:none;">Crear Torneo</button>
             </div>
         </div>
 
@@ -216,9 +222,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     const currentUser = app.currentUser;
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
-
         if (app.isAdmin()) {
             const adminLink = document.getElementById('adminLink');
             if (adminLink) adminLink.style.display = 'block';
@@ -377,7 +380,6 @@ async function deleteTournament(tournamentId) {
     }
 }
 
-// ======================= VISOR DE DETALLES MEJORADO =======================
 async function viewTournamentDetails(tournamentId) {
     try {
         const [tournament, allTeams] = await Promise.all([
@@ -385,7 +387,6 @@ async function viewTournamentDetails(tournamentId) {
             app.fetchAPI('/teams/')
         ]);
 
-        // 🔥 EL CAMBIO ESTÁ AQUÍ 🔥
         // Como el Torneo es el dueño de la relación, leemos su lista 'tournament.teams'
         // y filtramos allTeams basándonos en si están dentro de esa lista.
         const teams = allTeams.filter(team => {
@@ -420,10 +421,11 @@ async function viewTournamentDetails(tournamentId) {
                                 if (isCaptain) {
                                     actionBtn = `<span style="background: #fbbf24; color: #000; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">👑 Eres Capitán</span>`;
                                 } else if (isMember) {
-                                    actionBtn = `<span style="background: #10b981; color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">✓ Ya eres Miembro</span>`;
+                                    // Se crea botón rojo para salir del equipo
+                                    actionBtn = `<button class="btn btn-danger" style="padding: 6px 15px; font-weight: bold; border-radius: 6px;" onclick="app.leaveTeam(${team.id})">🚪 Salir del Equipo</button>`;
                                 } else {
-                                    // ¡EL GRAN BOTÓN DE UNIRSE!
-                                    actionBtn = `<button class="btn btn-primary" style="padding: 6px 15px; font-weight: bold; border-radius: 6px;" onclick="joinTeam(${team.id})">➕ Unirme</button>`;
+                                    // Se crea botón verde para unirse al equipo
+                                    actionBtn = `<button class="btn btn-primary" style="padding: 6px 15px; font-weight: bold; border-radius: 6px;" onclick="app.joinTeam(${team.id})">➕ Unirme</button>`;
                                 }
                             }
 
@@ -601,33 +603,7 @@ async function respondToRequest(requestId, accepted) {
         app.showAlert('Ocurrió un error al procesar la solicitud.', 'danger');
     }
 }
-async function joinTeam(teamId) {
-    if (!confirm('¿Estás seguro de que deseas unirte a este equipo como jugador?')) return;
-    
-    try {
-        const currentUser = app.currentUser;
-        
-        // ¡Aquí está la magia! Le enviamos a Django exactamente tu ID
-        await app.fetchAPI(`/teams/${teamId}/join/`, {
-            method: 'POST',
-            body: JSON.stringify({ user_id: currentUser.id }) 
-        });
-        
-        app.showAlert('¡Te has unido al equipo exitosamente!', 'success');
-        app.closeModal('detailsModal');
-        
-        // Recargamos todo para que se actualicen los datos
-        loadTournaments(); 
-        
-        // Si tienes estas funciones en tus otras pantallas, las llamamos para que se actualicen:
-        if (typeof loadMyTeams === 'function') loadMyTeams(); 
-        if (typeof loadTeams === 'function') loadTeams(); 
-        
-    } catch (error) {
-        console.error("Error al unirse al equipo:", error);
-        app.showAlert('Error al unirse. Verifica la consola para más detalles.', 'danger');
-    }
-}
+
 </script>
 
 <!-- Footer -->

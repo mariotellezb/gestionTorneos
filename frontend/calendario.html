@@ -29,6 +29,12 @@
         <div class="user-info">
             <p id="userName" style="margin-bottom: 5px;"></p>
             <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            
+            <!-- EL BOTÓN DEL TEMA -->
+            <button id="themeToggleBtn" onclick="app.toggleTheme()" style="width: 100%; padding: 8px; margin-bottom: 10px; margin-top: 10px; background: transparent; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 5px; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+                ☀️ Modo Claro
+            </button>
+            
             <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
         </div>
     </aside>
@@ -37,7 +43,9 @@
     <div class="main-content">
         <div class="header">
             <h1>Calendario de Partidos</h1>
-            <button id="createMatchBtn" class="btn btn-success btn-sm">+ Crear Partido</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="createMatchBtn" class="btn btn-success btn-sm" style="display:none;">+ Crear Partido</button>
+            </div>
         </div>
 
         <div class="content">
@@ -140,7 +148,6 @@
 
 <script src="js/app.js"></script>
 <script>
-let editingMatchId = null; // Nos dirá si estamos editando o creando
 let allMatchesData = []; // Aquí guardaremos los partidos para los filtros
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -343,9 +350,11 @@ async function saveMatch(e) {
     }
 }
 
-// ================== TABLA Y FILTROS ==================
+// 1. CARGAMOS LOS PARTIDOS Y VERIFICAMOS PERMISOS
 async function loadCalendarMatches() {
     try {
+        const currentUser = app.currentUser; // Necesitamos saber quién está logueado
+        
         const [matches, tournaments, teams] = await Promise.all([
             app.fetchAPI('/matches/'),
             app.fetchAPI('/tournaments/'),
@@ -354,12 +363,14 @@ async function loadCalendarMatches() {
 
         allMatchesData = matches.map(match => {
             const torneo = tournaments.find(t => t.id === match.tournament || t.id === match.tournament_id);
-            // Ahora leemos homeTeam y awayTeam
             const local = teams.find(t => t.id === match.homeTeam || t.id === match.homeTeam_id);
             const visitante = teams.find(t => t.id === match.awayTeam || t.id === match.awayTeam_id);
 
-            // Creamos una fecha combinada solo para poder ordenarlos cronológicamente en JS
             const fechaCompleta = `${match.date}T${match.time || '00:00:00'}`;
+            
+            // VERIFICACIÓN DE PODER: ¿El usuario actual es el organizador de este torneo?
+            const isOrganizer = currentUser && torneo && (torneo.organizer === currentUser.id || torneo.organizer_id === currentUser.id);
+            const canDelete = app.isAdmin() || isOrganizer;
 
             return {
                 ...match,
@@ -367,13 +378,12 @@ async function loadCalendarMatches() {
                 tournamentName: torneo ? torneo.name : 'Desconocido',
                 sport: torneo ? torneo.sport : 'N/A',
                 localName: local ? local.name : 'Por definir',
-                awayName: visitante ? visitante.name : 'Por definir'
+                awayName: visitante ? visitante.name : 'Por definir',
+                canDelete: canDelete // Guardamos el permiso en el partido
             };
         });
 
-        // Ordenamos por fecha (del más cercano al más lejano) usando el objeto de fecha que creamos
         allMatchesData.sort((a, b) => a.fullDateTimeObj - b.fullDateTimeObj);
-
         renderMatches(allMatchesData);
 
     } catch (error) {
@@ -381,6 +391,7 @@ async function loadCalendarMatches() {
     }
 }
 
+// 2. DIBUJAMOS LA TABLA CON EL BOTÓN DE ELIMINAR
 function renderMatches(matches) {
     const tbody = document.getElementById('matchesTableBody'); 
     if (!tbody) return;
@@ -391,52 +402,47 @@ function renderMatches(matches) {
     }
 
     tbody.innerHTML = matches.map(m => {
-        // 1. Formateamos la fecha
         const dateStr = m.fullDateTimeObj.toLocaleDateString() + ' ' + m.fullDateTimeObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const resultado = (m.homeScore !== null && m.awayScore !== null) ? `${m.homeScore} - ${m.awayScore}` : '-';
 
-        // 2. Calculamos el resultado (si no hay puntaje aún, mostramos un guion)
-        const resultado = (m.homeScore !== null && m.awayScore !== null) 
-            ? `${m.homeScore} - ${m.awayScore}` 
-            : '-';
-
-        // 3. Le damos estilo al estado del partido
         let estadoBadge = '';
         if (m.status === 'scheduled') estadoBadge = '<span style="background: #3b82f6; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">Programado</span>';
         else if (m.status === 'in_progress') estadoBadge = '<span style="background: #f59e0b; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">En Curso</span>';
         else if (m.status === 'finished') estadoBadge = '<span style="background: #10b981; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">Finalizado</span>';
         else estadoBadge = `<span style="background: #64748b; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px;">${m.status}</span>`;
 
-        // 4. Armamos las 8 columnas EXACTAS que pide tu tabla
+        // EL BOTÓN MÁGICO: Solo se dibuja si el usuario tiene permiso (canDelete = true)
+        const actionBtn = m.canDelete 
+            ? `<button class="btn btn-danger btn-sm" onclick="deleteMatch(${m.id})">🗑️ Eliminar</button>` 
+            : `<span style="color: #64748b; font-size: 12px;">Sin acciones</span>`;
+
         return `
         <tr style="border-bottom: 1px solid #334155;">
-            <!-- Columna 1: Torneo -->
             <td style="padding: 12px; color: #f59e0b; font-weight: bold;">${m.tournamentName}</td>
-            
-            <!-- Columna 2: Equipo Local -->
             <td style="padding: 12px; color: #38bdf8;">${m.localName}</td>
-            
-            <!-- Columna 3: Equipo Visitante -->
             <td style="padding: 12px; color: #ef4444;">${m.awayName}</td>
-            
-            <!-- Columna 4: Fecha y Hora -->
             <td style="padding: 12px;"><strong>${dateStr}</strong></td>
-            
-            <!-- Columna 5: Ubicación -->
             <td style="padding: 12px; color: #cbd5e1;">${m.location || 'Por definir'}</td>
-            
-            <!-- Columna 6: Estado -->
             <td style="padding: 12px;">${estadoBadge}</td>
-            
-            <!-- Columna 7: Resultado -->
             <td style="padding: 12px; text-align: center; font-weight: bold; font-size: 16px;">${resultado}</td>
-            
-            <!-- Columna 8: Acciones -->
-            <td style="padding: 12px;">
-                <button class="btn btn-sm" style="background-color: #475569; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;" onclick="editMatch(${m.id})">✏️ Editar</button>
-            </td>
+            <td style="padding: 12px; text-align: center;">${actionBtn}</td>
         </tr>
         `;
     }).join('');
+}
+
+// 3. LA FUNCIÓN PARA DESTRUIR EL PARTIDO
+async function deleteMatch(matchId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este partido? Esta acción no se puede deshacer.')) return;
+    
+    try {
+        await app.fetchAPI(`/matches/${matchId}/`, { method: 'DELETE' });
+        app.showAlert('Partido eliminado exitosamente', 'success');
+        loadCalendarMatches(); // Recarga la tabla al instante
+    } catch (error) {
+        console.error("Error al eliminar partido:", error);
+        app.showAlert('Error al eliminar el partido', 'danger');
+    }
 }
 
 function applyCalendarFilters() {
@@ -454,35 +460,6 @@ function applyCalendarFilters() {
     });
 
     renderMatches(filteredMatches);
-}
-
-async function editMatch(matchId) {
-    // 1. Buscamos el partido en nuestros datos descargados
-    const match = allMatchesData.find(m => m.id === matchId);
-    if (!match) return;
-
-    // 2. Activamos el "modo edición"
-    editingMatchId = matchId;
-    document.getElementById('modalTitle').textContent = 'Editar Partido';
-
-    // 3. Cargamos los torneos y equipos
-    await loadMatchFormOptions();
-
-    // 4. Llenamos el formulario con los datos
-    const tournamentSelect = document.getElementById('matchTournament');
-    tournamentSelect.value = match.tournament || match.tournament_id;
-
-    // Engañamos a nuestra función de filtro para que cargue los equipos de este torneo
-    updateTeamDropdowns({ target: { value: tournamentSelect.value } });
-
-    document.getElementById('matchLocalTeam').value = match.homeTeam || match.homeTeam_id;
-    document.getElementById('matchAwayTeam').value = match.awayTeam || match.awayTeam_id;
-    document.getElementById('matchDate').value = match.date;
-    document.getElementById('matchTime').value = match.time;
-    document.getElementById('matchLocation').value = match.location;
-
-    // 5. Abrimos la ventana
-    app.showModal('matchModal');
 }
 
 </script>

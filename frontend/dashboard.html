@@ -9,7 +9,6 @@
 <body>
 
 <div class="main-layout">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
@@ -22,18 +21,22 @@
                 <li><a href="calendario.html">📅 Calendario</a></li>
                 <li><a href="resultados.html">📈 Resultados</a></li>
                 <li><a href="perfil.html">👤 Mi Perfil</a></li>
-                <li id="adminLink" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
+                <li id="adminLink" class="hidden-element" style="display:none;"><a href="admin.html">⚙️ Administración</a></li>
                 <li><a href="ayuda-logueado.html">❓ Centro de Ayuda</a></li>
             </ul>
         </nav>
         <div class="user-info">
-            <p id="userName" style="margin-bottom: 5px;"></p>
-            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <p id="userName"></p>
+            <p id="userRole" class="text-blue"></p>
+            
+            <button id="themeToggleBtn" onclick="app.toggleTheme()" class="theme-toggle-btn">
+                ☀️ Modo Claro
+            </button>
+            
             <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <div class="main-content">
         <div class="header">
             <div class="header-left">
@@ -41,22 +44,6 @@
                 <p id="welcomeMessage"></p>
             </div>
             <div class="header-right">
-                <!-- Icono de notificaciones -->
-                <div class="notifications-container">
-                    <button class="notifications-btn" id="notificationsBtn" onclick="app.toggleNotifications()">
-                        <span class="notification-icon">🔔</span>
-                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
-                    </button>
-                    <div class="notifications-dropdown" id="notificationsDropdown">
-                        <div class="notifications-header">
-                            <h4>Notificaciones</h4>
-                            <button class="mark-read-btn" onclick="app.markAllNotificationsRead()">Marcar todo como leído</button>
-                        </div>
-                        <div class="notifications-list" id="notificationsList">
-                            <p class="no-notifications">No hay notificaciones</p>
-                        </div>
-                    </div>
-                </div>
                 <span class="user-greeting" id="userGreeting">Hola, <span id="userNameHeader"></span></span>
             </div>
         </div>
@@ -64,7 +51,6 @@
         <div class="content">
             <div id="alert" class="alert"></div>
 
-            <!-- CONTENEDOR DE ACCIONES PRINCIPALES -->
             <div class="action-section">
                 <h2 class="action-title">¿Qué quieres hacer?</h2>
                 <div class="action-container">
@@ -83,33 +69,30 @@
                 </div>
             </div>
 
-            <!-- BIENVENIDA -->
             <div class="card">
                 <h3>¡Bienvenido a la Plataforma de Gestión de Torneos!</h3>
                 <p>Aquí puedes administrar torneos, equipos, calendario y resultados de todas las competiciones.</p>
             </div>
 
-            <!-- ESTADÍSTICAS RÁPIDAS -->
             <div class="card-grid" id="statsGrid">
                 <div class="card-item">
                     <h4>Torneos Activos</h4>
-                    <p style="font-size: 28px; color: #38bdf8; font-weight: bold;" id="activeTournaments">0</p>
+                    <p class="stat-number text-blue" id="activeTournaments">0</p>
                 </div>
                 <div class="card-item">
                     <h4>Equipos Registrados</h4>
-                    <p style="font-size: 28px; color: #10b981; font-weight: bold;" id="totalTeams">0</p>
+                    <p class="stat-number text-green" id="totalTeams">0</p>
                 </div>
                 <div class="card-item">
                     <h4>Partidos Programados</h4>
-                    <p style="font-size: 28px; color: #f59e0b; font-weight: bold;" id="totalMatches">0</p>
+                    <p class="stat-number text-orange" id="totalMatches">0</p>
                 </div>
                 <div class="card-item">
                     <h4>Usuarios Registrados</h4>
-                    <p style="font-size: 28px; color: #8b5cf6; font-weight: bold;" id="totalUsers">0</p>
+                    <p class="stat-number text-purple" id="totalUsers">0</p>
                 </div>
             </div>
 
-            <!-- TORNEOS RECIENTES -->
             <div class="card">
                 <h3>Torneos Recientes</h3>
                 <table>
@@ -125,13 +108,12 @@
                     </thead>
                     <tbody id="recentTournamentsTable">
                         <tr>
-                            <td colspan="6" style="text-align: center; color: #cbd5e1;">Cargando torneos...</td>
+                            <td colspan="6" class="empty-table-msg">Cargando torneos...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <!-- PARTIDOS PRÓXIMOS -->
             <div class="card">
                 <h3>Próximos Partidos</h3>
                 <table>
@@ -146,7 +128,7 @@
                     </thead>
                     <tbody id="upcomingMatchesTable">
                         <tr>
-                            <td colspan="5" style="text-align: center; color: #cbd5e1;">Cargando partidos...</td>
+                            <td colspan="5" class="empty-table-msg">Cargando partidos...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -155,20 +137,13 @@
     </div>
 </div>
 
-<script src="js/db.js"></script>
 <script src="js/app.js"></script>
-
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
-    // 1. Verificamos autenticación (ya usa el localStorage actualizado por el nuevo login)
     if (!app.checkAuth()) return;
 
-    // 2. Actualizamos la info del usuario
     const currentUser = app.currentUser;
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
-        
         const firstName = (currentUser.name || currentUser.username || '').split(' ')[0];
         document.getElementById('userNameHeader').textContent = firstName;
 
@@ -176,14 +151,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             const adminLink = document.getElementById('adminLink');
             if(adminLink) adminLink.style.display = 'block';
         }
-        
-        // Mantenemos las notificaciones locales por ahora
-        // app.loadNotifications();
     }
 
-    // 3. Cargamos los datos desde Django (Esperamos a que terminen con await)
     try {
-        // Ejecutamos las tres llamadas en paralelo para que cargue más rápido
         const [tournaments, teams, matches] = await Promise.all([
             app.fetchAPI('/tournaments/'),
             app.fetchAPI('/teams/'),
@@ -199,10 +169,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         app.showAlert("Error al cargar los datos del servidor", "danger");
     }
 
-    // 4. Actualizamos navegación
     app.initializeNavigation();
     
-    // 5. Evento para cerrar notificaciones
     document.addEventListener('click', function(e) {
         const dropdown = document.getElementById('notificationsDropdown');
         const btn = document.getElementById('notificationsBtn');
@@ -215,7 +183,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 function loadStatistics(tournaments, teams, matches) {
     const activeTournaments = tournaments.filter(t => t.status === 'active').length;
 
-    // Para los usuarios, como aún no hacemos el endpoint, usamos un fallback temporal
     let totalUsersCount = 0;
     if (typeof db !== 'undefined' && db.getAllUsers) {
         totalUsersCount = db.getAllUsers().length;
@@ -234,29 +201,26 @@ function loadRecentTournaments(tournaments) {
     tbody.innerHTML = '';
 
     if (tournaments.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #cbd5e1;">No hay torneos registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-table-msg">No hay torneos registrados</td></tr>';
         return;
     }
 
-    // Ordenamos por los más recientes (asumiendo que los últimos tienen ID más alto)
     const recent = tournaments.sort((a, b) => b.id - a.id).slice(0, 5);
 
     recent.forEach(tournament => {
         const row = document.createElement('tr');
-        // Aseguramos de que startDate y endDate existan antes de formatear
         const startDate = tournament.startDate ? app.formatDate(tournament.startDate) : 'N/A';
         const endDate = tournament.endDate ? app.formatDate(tournament.endDate) : 'N/A';
-        
-        // Traducimos el status al español
         const statusMap = { 'active': 'Activo', 'completed': 'Completado', 'cancelled': 'Cancelado' };
         const statusEs = statusMap[tournament.status] || tournament.status;
 
+        // 🔥 AQUÍ: Quitamos los estilos en línea y usamos clases
         row.innerHTML = `
             <td>${tournament.name}</td>
             <td>${tournament.sport}</td>
             <td>${startDate}</td>
             <td>${endDate}</td>
-            <td><span style="color: #10b981; font-weight: bold;">${statusEs}</span></td>
+            <td><span class="text-success">${statusEs}</span></td>
             <td>
                 <button class="btn btn-secondary" onclick="window.location.href='torneos.html?id=${tournament.id}'">Ver Detalles</button>
             </td>
@@ -276,12 +240,11 @@ function loadUpcomingMatches(matches, tournaments, teams) {
     });
 
     if (scheduledMatches.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #cbd5e1;">No hay partidos programados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-table-msg">No hay partidos programados</td></tr>';
         return;
     }
 
     scheduledMatches.slice(0, 5).forEach(match => {
-        // Buscamos los nombres en los arreglos que ya descargamos
         const tournament = tournaments.find(t => t.id === match.tournament) || tournaments.find(t => t.id === match.tournamentId);
         const homeTeam = teams.find(t => t.id === match.homeTeam) || teams.find(t => t.id === match.homeTeamId);
         const awayTeam = teams.find(t => t.id === match.awayTeam) || teams.find(t => t.id === match.awayTeamId);
@@ -303,7 +266,6 @@ function loadUpcomingMatches(matches, tournaments, teams) {
 }
 </script>
 
-<!-- Footer -->
 <footer class="footer">
     <div class="footer-content">
         <a href="terminos.html" class="footer-link">Términos y Condiciones</a>

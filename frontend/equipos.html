@@ -9,7 +9,6 @@
 <body>
 
 <div class="main-layout">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <img src="img/tl_letters.png" alt="TROYAN LEGACY" class="sidebar-logo">
@@ -27,43 +26,44 @@
             </ul>
         </nav>
         <div class="user-info">
-            <p id="userName" style="margin-bottom: 5px;"></p>
-            <p id="userRole" style="font-size: 11px; color: #38bdf8;"></p>
+            <p id="userName"></p>
+            <p id="userRole" class="text-blue"></p>
+            
+            <button id="themeToggleBtn" onclick="app.toggleTheme()" class="theme-toggle-btn">
+                ☀️ Modo Claro
+            </button>
+            
             <button class="logout-btn" onclick="app.logout()">Cerrar Sesión</button>
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
     <div class="main-content">
         <div class="header">
             <h1>Gestión de Equipos</h1>
+            <button id="createTeamBtn" class="btn btn-success" style="display:none;" onclick="openCreateModal()">+ Crear Equipo</button>
         </div>
 
         <div class="content">
             <div id="alert" class="alert"></div>
 
-            <!-- BÚSQUEDA -->
             <div class="card">
                 <form id="filterForm">
-                    <div class="form-group" style="margin-bottom: 0;">
+                    <div class="form-group">
                         <input type="text" id="searchTeam" placeholder="Buscar equipo por nombre...">
                     </div>
                 </form>
             </div>
 
-            <!-- LISTA DE EQUIPOS -->
-            <div class="container-fluid mt-4" style="max-width: 1400px; padding: 0 20px;">
-                <h2 style="color: #fff; margin-bottom: 20px;">Directorio de Equipos</h2>
-
+            <div class="container-fluid mt-4">
+                <h2>Directorio de Equipos</h2>
                 <div id="teamsContainer">
-                    <p style="color: #94a3b8; text-align: center;">Cargando equipos...</p>
+                    <p class="empty-table-msg">Cargando equipos...</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- MODAL CREAR/EDITAR EQUIPO -->
 <div id="teamModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -87,7 +87,6 @@
     </div>
 </div>
 
-<!-- MODAL VER DETALLES Y GESTIONAR MIEMBROS -->
 <div id="teamDetailsModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -101,7 +100,6 @@
 <script src="js/app.js"></script>
 <script>
 let currentEditingTeamId = null;
-let allUsers = []; // Guardaremos los usuarios aquí temporalmente
 
 document.addEventListener('DOMContentLoaded', async function() {
     if (!app.checkAuth()) return;
@@ -110,20 +108,13 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     const currentUser = app.currentUser;
     if (currentUser) {
-        document.getElementById('userName').textContent = currentUser.name || currentUser.username;
-        document.getElementById('userRole').textContent = `Rol: ${currentUser.role || 'usuario'}`;
-
         if (app.isAdmin()) {
             document.getElementById('adminLink').style.display = 'block';
         }
-
-        // Permite crear equipo si es capitán, organizador o admin
         if (app.isCaptain() || app.isAdmin() || app.isOrganizer()) {
             document.getElementById('createTeamBtn').style.display = 'inline-block';
         }
     }
-
-
     document.getElementById('createTeamBtn').addEventListener('click', openCreateModal);
     document.getElementById('teamForm').addEventListener('submit', saveTeam);
     document.getElementById('searchTeam').addEventListener('input', filterTeams);
@@ -139,9 +130,7 @@ async function loadTeams() {
         const container = document.getElementById('teamsContainer'); 
         if (!container) return;
 
-        const currentUser = app.currentUser;
-        const currentUserId = currentUser ? currentUser.id : null;
-
+        const currentUserId = app.currentUser ? app.currentUser.id : null;
         let html = '';
 
         tournaments.forEach(tournament => {
@@ -149,75 +138,42 @@ async function loadTeams() {
 
             if (tournamentTeams.length > 0) {
                 html += `
-                <div style="margin-bottom: 30px; background: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #334155;">
-                    <h3 style="color: #f59e0b; margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #475569; padding-bottom: 10px;">
-                        🏆 Torneo: ${tournament.name}
-                    </h3>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px;">
-                `;
+                <div class="team-tournament-container">
+                    <h3 class="team-tournament-title">🏆 Torneo: ${tournament.name}</h3>
+                    <div class="teams-grid">`;
 
                 tournamentTeams.forEach(team => {
                     const totalJugadores = (team.members ? team.members.length : 0) + (team.captain ? 1 : 0);
                     const isCaptain = team.captain === currentUserId || team.captain_id === currentUserId;
-                    const miembros = team.members || []; 
-                    const isMember = miembros.includes(currentUserId);
+                    const isMember = (team.members || []).includes(currentUserId);
                     
                     let actionBtn = '';
                     if (currentUserId) { 
                         if (isCaptain) {
-                            actionBtn = `<span style="background: #fbbf24; color: #000; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">👑 Eres Capitán</span>`;
+                            actionBtn = `<span class="btn btn-warning btn-sm">👑 Capitán</span>`;
                         } else if (isMember) {
-                            actionBtn = `<span style="background: #10b981; color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold;">✓ Eres Miembro</span>`;
+                            actionBtn = `<button class="btn btn-danger btn-sm" onclick="app.leaveTeam(${team.id})">🚪 Salir</button>`;
                         } else {
-                            actionBtn = `<button class="btn btn-primary btn-sm" style="font-weight: bold; border-radius: 6px;" onclick="joinTeam(${team.id})">➕ Unirme</button>`;
+                            actionBtn = `<button class="btn btn-primary btn-sm" onclick="app.joinTeam(${team.id})">➕ Unirme</button>`;
                         }
                     }
 
                     html += `
-                        <div style="background: #0f172a; padding: 15px; border-radius: 8px; border: 1px solid #38bdf8; display: flex; justify-content: space-between; align-items: center;">
+                        <div class="team-card">
                             <div>
-                                <strong style="color: #fff; font-size: 16px;">🛡️ ${team.name}</strong>
-                                <p style="color: #94a3b8; font-size: 13px; margin: 5px 0 0 0;">👥 ${totalJugadores} Jugador(es)</p>
+                                <strong class="team-info-name">🛡️ ${team.name}</strong>
+                                <p class="team-info-players">👥 ${totalJugadores} Jugadores</p>
                             </div>
-                            <div>
-                                ${actionBtn}
-                            </div>
-                        </div>
-                    `;
+                            <div>${actionBtn}</div>
+                        </div>`;
                 });
-
                 html += `</div></div>`;
             }
         });
 
-        if (html === '') {
-            html = '<div style="text-align: center; padding: 20px; color: #94a3b8; background: #1e293b; border-radius: 8px; border: 1px dashed #475569;">No hay equipos registrados en ningún torneo todavía.</div>';
-        }
-
-        container.innerHTML = html;
-
+        container.innerHTML = html || '<p class="empty-teams-msg">No hay equipos registrados todavía.</p>';
     } catch (error) {
-        console.error("Error al cargar la lista de equipos:", error);
-    }
-}
-
-// ¡Esta es la función que hace que el botón funcione!
-async function joinTeam(teamId) {
-    if (!confirm('¿Estás seguro de que deseas unirte a este equipo como jugador?')) return;
-    
-    try {
-        const currentUser = app.currentUser;
-        await app.fetchAPI(`/teams/${teamId}/join/`, {
-            method: 'POST',
-            body: JSON.stringify({ user_id: currentUser.id }) 
-        });
-        
-        app.showAlert('¡Te has unido al equipo exitosamente!', 'success');
-        loadTeams(); // Recargamos para que el botón cambie a "✓ Eres Miembro"
-        
-    } catch (error) {
-        console.error("Error al unirse al equipo:", error);
-        app.showAlert('Error al unirse. Verifica si ya eres miembro.', 'danger');
+        console.error("Error al cargar equipos:", error);
     }
 }
 
@@ -226,19 +182,6 @@ function openCreateModal() {
     document.getElementById('modalTitle').textContent = 'Crear Equipo';
     document.getElementById('teamForm').reset();
     app.showModal('teamModal');
-}
-
-async function editTeam(teamId) {
-    try {
-        const team = await app.fetchAPI(`/teams/${teamId}/`);
-        currentEditingTeamId = teamId;
-        document.getElementById('modalTitle').textContent = 'Editar Equipo';
-        document.getElementById('teamName').value = team.name;
-        document.getElementById('teamDescription').value = team.description;
-        app.showModal('teamModal');
-    } catch (error) {
-        app.showAlert('Error al cargar datos del equipo', 'danger');
-    }
 }
 
 async function saveTeam(e) {
@@ -265,61 +208,14 @@ async function saveTeam(e) {
     }
 }
 
-async function deleteTeam(teamId) {
-    if (!confirm('¿Estás seguro de que deseas eliminar este equipo en la base de datos?')) return;
-    try {
-        await app.fetchAPI(`/teams/${teamId}/`, { method: 'DELETE' });
-        app.showAlert('Equipo eliminado', 'success');
-        loadTeams();
-    } catch (error) {
-        app.showAlert('Error al eliminar equipo', 'danger');
-    }
-}
-
-async function viewTeamDetails(teamId) {        
-    try {
-        const team = await app.fetchAPI(`/teams/${teamId}/`);
-        const captainId = team.captain || team.captain_id || team.captainId;
-        const members = team.members || [];
-        const isCaptainOrAdmin = app.currentUser.id === captainId || app.isAdmin();
-
-        // Intento de cargar usuarios (fallará silenciosamente si no tienes el endpoint /users/ en Django aún)
-        try { if(allUsers.length === 0) allUsers = await app.fetchAPI('/users/'); } catch(e) {}
-
-        let detailsHTML = `
-            <div style="margin-bottom: 15px;">
-                <p><strong>Nombre:</strong> ${team.name}</p>
-                <p><strong>Descripción:</strong> ${team.description}</p>
-                <p><strong>Miembros Totales:</strong> ${members.length}</p>
-            </div>
-            <div>
-                <h4 style="margin-bottom: 10px; color: #38bdf8;">Miembros del Equipo:</h4>
-                <ul style="list-style: none; padding: 0;">
-                    ${members.length > 0 ? members.map(memberId => `
-                        <li style="padding: 8px; background: #334155; margin-bottom: 5px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-                            <span>• ID Jugador: ${memberId}</span>
-                        </li>
-                    `).join('') : '<p>Sin miembros</p>'}
-                </ul>
-            </div>
-        `;
-        document.getElementById('teamDetailsContent').innerHTML = detailsHTML;
-        document.getElementById('teamDetailsTitle').textContent = team.name;
-        app.showModal('teamDetailsModal');
-    } catch (error) {
-        app.showAlert('Error al cargar detalles', 'danger');
-    }
-}
-
 function filterTeams() {
     const searchValue = document.getElementById('searchTeam').value.toLowerCase();
-    const rows = document.querySelectorAll('#teamsTable tr');
-    rows.forEach((row, index) => {
-        if (index === 0) return;
-        row.style.display = row.textContent.toLowerCase().includes(searchValue) ? '' : 'none';
+    const cards = document.querySelectorAll('.team-card');
+    cards.forEach(card => {
+        const text = card.textContent.toLowerCase();
+        card.style.display = text.includes(searchValue) ? '' : 'none';
     });
 }
-
 </script>
 
 <!-- Footer -->
