@@ -34,8 +34,6 @@
     --warning: #f59e0b;
 }*/
 
-/* OPCIÓN 3: Rendimiento y Carbono (Negro Mate y Rojo) - DESACTIVADO 
-   (Para usarlo, borra los /* de arriba y abajo de este bloque, y pónselos a la Opción 2)*/
 :root {
     /* Fondos basados en el azul profundo de la UAQ */
     --bg-base: #06111c; /* Fondo súper oscuro con un toque de azul */
@@ -43,7 +41,7 @@
     --bg-hover: #133254;
     --border-color: #1c426b;
     
-    /* Acentos hola */
+    /* Acentos */
     --accent-primary: #5ca1e6; /* Un azul más claro para que los botones destaquen */
     --accent-hover: #82bbf2;
     --accent-secondary: #e5e7eb; /* El gris claro de la imagen */
