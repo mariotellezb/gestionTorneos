@@ -146,8 +146,8 @@
                     
                     <div style="margin-bottom: 30px;">
                         <h4 style="color: #38bdf8; margin-bottom: 15px;">Acciones de Servidor</h4>
-                        <div class="btn-group" style="flex-direction: column;">
-                            <a href="http://127.0.0.1:8000/admin/" target="_blank" class="btn btn-primary" style="text-align: center; margin-bottom: 15px; padding: 12px; font-size: 16px;">
+                        <div id="admin-panel-box" class="btn-group" style="flex-direction: column;">
+                            <a href="https://backend-troyan-legacy.onrender.com/admin/" target="_blank" class="btn btn-primary" style="text-align: center; margin-bottom: 15px; padding: 12px; font-size: 16px;">
                                 🛡️ Abrir Panel de Django Admin
                             </a>
                         </div>
@@ -158,11 +158,11 @@
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr>
                                 <td style="padding: 8px 0; border-bottom: 1px solid var(--border-color);"><strong>Base de Datos:</strong></td>
-                                <td style="padding: 8px 0; border-bottom: 1px solid var(--border-color); color: #10b981;">Conectado (Django REST API)</td>
+                                <td style="padding: 8px 0; border-bottom: 1px solid var(--border-color); color: #10b981;">Conectado (Neon PostgreSQL / Render Backend)</td>
                             </tr>
                             <tr>
                                 <td style="padding: 8px 0; border-bottom: 1px solid var(--border-color);"><strong>URL del API:</strong></td>
-                                <td style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">http://127.0.0.1:8000/api/</td>
+                                <td style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">https://backend-troyan-legacy.onrender.com/api/</td>
                             </tr>
                         </table>
                     </div>
@@ -174,17 +174,25 @@
 
 <script src="js/app.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Verificación básica de sesión
     if (!app.checkAuth()) return;
+    
+    // 2. Inicialización común
     app.initializeNavigation();
 
-    // Bloquear si no es admin
-    if (!app.isAdmin()) {
-        window.location.href = 'dashboard.html';
-        return;
-    }
+    // 3. Lógica de Administración (Ocultar/Mostrar elementos)
+    if (app.isAdmin()) {
+        // Mostrar elementos de admin
+        const adminBox = document.getElementById('admin-panel-box');
+        if (adminBox) adminBox.style.display = 'block';
 
-    loadAdminData();
+        // Cargar los datos específicos del admin
+        loadAdminData();
+    } else {
+        // 4. Si no es admin, redirigir inmediatamente
+        window.location.href = 'dashboard.html';
+    }
 });
 
 function switchTab(tabName) {
