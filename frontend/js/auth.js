@@ -20,7 +20,6 @@ if (loginForm) {
 
             if (response.ok && data.success) {
                 localStorage.setItem("currentUser", JSON.stringify(data.user));
-                // Guardamos los tokens con nombres exactos que espera app.js
                 localStorage.setItem("accessToken", data.access);
                 localStorage.setItem("refreshToken", data.refresh);
 
@@ -46,6 +45,7 @@ if (signupForm) {
         const password = document.getElementById("password").value.trim();
 
         try {
+            // 1. Intentamos registrar al usuario
             const response = await fetch(`${API_BASE_URL}/register/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -55,12 +55,30 @@ if (signupForm) {
             const data = await response.json();
 
             if (response.ok && data.success) {
-                localStorage.setItem("currentUser", JSON.stringify(data.user));
-                localStorage.setItem("accessToken", data.access);
-                localStorage.setItem("refreshToken", data.refresh);
+                showAuthAlert("¡Cuenta creada! Preparando tu sesión...", "success");
+                
+                // 2. ¡EL TRUCO! Hacemos login automático de inmediato
+                const loginResponse = await fetch(`${API_BASE_URL}/login/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
 
-                showAuthAlert("¡Cuenta creada!", "success");
-                setTimeout(() => { window.location.href = "dashboard.html"; }, 1000);
+                const loginData = await loginResponse.json();
+
+                // 3. Si el login automático funciona, guardamos las llaves reales
+                if (loginResponse.ok && loginData.success) {
+                    localStorage.setItem("currentUser", JSON.stringify(loginData.user));
+                    localStorage.setItem("accessToken", loginData.access);
+                    localStorage.setItem("refreshToken", loginData.refresh);
+
+                    setTimeout(() => { window.location.href = "dashboard.html"; }, 1000);
+                } else {
+                    // Plan B por si algo muy raro pasa
+                    showAuthAlert("Registrado. Por favor, inicia sesión.", "warning");
+                    setTimeout(() => { window.location.href = "login.html"; }, 1500);
+                }
+
             } else {
                 showAuthAlert(data.message || "Error al registrarse", "danger");
             }
