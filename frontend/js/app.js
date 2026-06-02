@@ -1,59 +1,37 @@
 // ======================== APPLICATION UTILITIES (CONECTADA A DJANGO) ========================
 
-// URL base de tu API de Django
 var API_BASE_URL = 'https://backend-troyan-legacy.onrender.com/api';
 
 class App {
     constructor() {
-        this.apiUrl = 'https://backend-troyan-legacy.onrender.com/api';
-        
-        this.currentUser = JSON.parse(localStorage.getItem('user')) || null;
-        this.accessToken = localStorage.getItem('access_token');
-        this.refreshToken = localStorage.getItem('refresh_token');
-
-        // ¡Agrega esta línea!
+        this.apiUrl = API_BASE_URL;
+        this.currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
         this.loadTheme();
     }
 
-    // ==========================================
-    // CONEXIÓN A LA API CON SEGURIDAD JWT
-    // ==========================================
     async fetchAPI(endpoint, options = {}) {
-        const url = `${API_BASE_URL}${endpoint}`;
-        
-        // 1. Buscamos la llave en el bolsillo del navegador
-        const token = localStorage.getItem("accessToken");
+        const url = `${this.apiUrl}${endpoint}`;
+        const token = localStorage.getItem("accessToken"); // Nombre exacto que guardamos en auth.js
 
         const headers = {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}), // Inyectamos el token si existe
             ...(options.headers || {})
         };
 
-        // 2. Si tenemos la llave, se la pegamos a la petición
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
-        }
-
         try {
-            const response = await fetch(url, {
-                ...options,
-                headers
-            });
+            const response = await fetch(url, { ...options, headers });
 
-            // 3. Si el guardia de Django nos dice que la llave caducó (Error 401)
+            // Manejo de errores de autenticación
             if (response.status === 401) {
-                console.error("La sesión ha expirado o el token es inválido.");
-                this.logout(); // Expulsamos al usuario por seguridad
+                console.warn("Token inválido o expirado.");
+                // Opcional: this.logout();
                 throw new Error("Sesión expirada");
             }
 
-            // Si es un DELETE que no devuelve contenido (204 No Content), no intentamos leer el JSON
-            if (response.status === 204) {
-                return null; 
-            }
+            if (response.status === 204) return null;
 
             return await response.json();
-            
         } catch (error) {
             console.error(`Error en fetchAPI (${endpoint}):`, error);
             throw error;
@@ -357,10 +335,7 @@ class App {
             return;
         }
         
-        try {
-            // Simulamos el envío por ahora. 
-            // FUTURO: await this.fetchAPI('/requests/', { method: 'POST', body: JSON.stringify({...}) });
-            
+        try {            
             // Usamos el fallback local temporalmente para no romper la UI
             const result = db.requestJoinTournamentWithDetails(tournamentId, this.currentUser.id, {
                 teamName, captainName, phone, email, notes
@@ -433,7 +408,6 @@ window.app = new App();
 document.addEventListener('DOMContentLoaded', () => {
     if (!window.location.href.includes('login.html') && !window.location.href.includes('signin.html') && !window.location.href.includes('index.html')) {
         if (app.checkAuth()) {
-            // ¡ESTE ES EL CABLE QUE FALTABA!
             if (typeof app.loadNotifications === 'function') {
                 app.loadNotifications();
             }

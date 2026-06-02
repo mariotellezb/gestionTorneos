@@ -48,8 +48,6 @@ class DatabaseAPI {
             return { success: false, message: 'Error de conexión' };
         }
     }
-
-    // ... (El mismo patrón se repite para Equipos, Partidos, etc.)
 }
 
 // Exportamos la nueva instancia
