@@ -5,27 +5,70 @@ var API_BASE_URL = 'https://backend-troyan-legacy.onrender.com/api';
 class App {
     constructor() {
         this.apiUrl = API_BASE_URL;
-        this.currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+        this.refreshUserSession(); // Constructor único y seguro
         this.loadTheme();
     }
 
+    // ==========================================
+    // GESTIÓN DE SESIÓN (Segura contra "undefined")
+    // ==========================================
+    refreshUserSession() {
+        const userStr = localStorage.getItem('currentUser');
+        
+        // Verificamos que exista y que NO sea basura
+        if (userStr && userStr !== "undefined" && userStr !== "null") {
+            try {
+                this.currentUser = JSON.parse(userStr);
+            } catch (e) {
+                console.error("Error al leer el usuario, limpiando...", e);
+                this.currentUser = null;
+            }
+        } else {
+            this.currentUser = null;
+        }
+        
+        this.accessToken = localStorage.getItem("accessToken");
+        this.refreshToken = localStorage.getItem("refreshToken");
+    }
+
+    checkAuth() {
+        this.refreshUserSession(); // Siempre validamos al pedir auth
+        if (!this.currentUser) {
+            window.location.href = 'login.html';
+            return false;
+        }
+        return true;
+    }
+
+    logout() {
+        if (confirm('¿Deseas cerrar sesión?')) {
+            localStorage.removeItem("currentUser");
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            window.location.href = "login.html";
+        }
+    }
+
+    // ==========================================
+    // PETICIONES A DJANGO (FETCH API)
+    // ==========================================
     async fetchAPI(endpoint, options = {}) {
         const url = `${this.apiUrl}${endpoint}`;
-        const token = localStorage.getItem("accessToken"); // Nombre exacto que guardamos en auth.js
+        const token = localStorage.getItem("accessToken");
 
         const headers = {
             'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}), // Inyectamos el token si existe
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...(options.headers || {})
         };
 
         try {
             const response = await fetch(url, { ...options, headers });
 
-            // Manejo de errores de autenticación
             if (response.status === 401) {
                 console.warn("Token inválido o expirado.");
-                // Opcional: this.logout();
+                // Si el token expira, es buena práctica hacer logout automático
+                // this.logout(); 
                 throw new Error("Sesión expirada");
             }
 
@@ -36,18 +79,6 @@ class App {
             console.error(`Error en fetchAPI (${endpoint}):`, error);
             throw error;
         }
-    }
-
-    // ==========================================
-    // CERRAR SESIÓN (DESTRUIR LLAVES)
-    // ==========================================
-    logout() {
-        // Borramos todo rastro del usuario y sus llaves por seguridad
-        localStorage.removeItem("currentUser");
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        
-        window.location.href = "login.html";
     }
 
     // ======================== NAVIGATION ========================
@@ -79,39 +110,21 @@ class App {
         });
     }
 
-    // ======================== AUTHENTICATION ========================
-    checkAuth() {
-        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
-        if (!currentUser) {
-            window.location.href = 'login.html';
-            return false;
-        }
-        this.currentUser = currentUser;
-        return true;
-    }
-
-    logout() {
-        if (confirm('¿Deseas cerrar sesión?')) {
-            // Limpiamos la sesión local
-            localStorage.removeItem('currentUser');
-            window.location.href = 'index.html';
-        }
-    }
-
+    // ======================== ROLES ========================
     isAdmin() {
         return this.currentUser && this.currentUser.role === 'administrador';
     }
 
     isOrganizer() {
-        return this.currentUser && (this.currentUser.role === 'organizador' || this.currentUser.role === 'creador' || this.currentUser.role === 'administrador');
+        return this.currentUser && ['organizador', 'creador', 'administrador'].includes(this.currentUser.role);
     }
     
     canCreateTournament() {
-        return this.currentUser && (this.currentUser.role === 'organizador' || this.currentUser.role === 'creador' || this.currentUser.role === 'administrador');
+        return this.isOrganizer();
     }
 
     isCaptain() {
-        return this.currentUser && (this.currentUser.role === 'capitan' || this.currentUser.role === 'administrador');
+        return this.currentUser && ['capitan', 'administrador'].includes(this.currentUser.role);
     }
 
     // ======================== UI HELPERS ========================
@@ -128,19 +141,15 @@ class App {
 
     showModal(modalId) {
         const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.add('active');
-        }
+        if (modal) modal.classList.add('active');
     }
 
     closeModal(modalId) {
         const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('active');
-        }
+        if (modal) modal.classList.remove('active');
     }
 
-    // ======================== TABLE HELPERS ========================
+    // ======================== TABLE & FORMATTING HELPERS ========================
     createTableRow(data) {
         const tr = document.createElement('tr');
         Object.values(data).forEach(value => {
@@ -151,7 +160,6 @@ class App {
         return tr;
     }
 
-    // ======================== FORMATTING ========================
     formatDate(dateString) {
         if (!dateString) return 'Fecha no disponible';
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
@@ -171,7 +179,6 @@ class App {
         const isLight = body.classList.contains('light-mode');
         localStorage.setItem('troyan_theme', isLight ? 'light' : 'dark');
         
-        // Cambiar el texto del botón si existe en la pantalla actual
         const themeBtn = document.getElementById('themeToggleBtn');
         if (themeBtn) {
             themeBtn.innerHTML = isLight ? '🌙 Modo Oscuro' : '☀️ Modo Claro';
@@ -191,90 +198,22 @@ class App {
         }
     }
 
-    // ======================== ACCIONES DE EQUIPOS GLOBALES ========================
-    async joinTeam(teamId) {
-        if (!confirm('¿Estás seguro de que deseas unirte a este equipo como jugador?')) return;
-        
-        try {
-            const currentUser = this.currentUser;
-            
-            const response = await this.fetchAPI(`/teams/${teamId}/join/`, {
-                method: 'POST',
-                body: JSON.stringify({ user_id: currentUser.id }) 
-            });
-            
-            if (response && response.error) {
-                this.showAlert(response.error, 'warning');
-                return; 
-            }
-            
-            this.showAlert('¡Te has unido al equipo exitosamente!', 'success');
-            
-            // Cerramos las ventanas (sin importar en qué pantalla estemos)
-            this.closeModal('detailsModal');
-            this.closeModal('teamDetailsModal');
-            
-            // Recargamos los datos
-            if (typeof loadTournaments === 'function') loadTournaments(); 
-            if (typeof loadTeams === 'function') loadTeams();
-            
-        } catch (error) {
-            console.error("Error técnico al unirse:", error);
-            // 🔥 AQUÍ ESTÁ LA MAGIA: Nos dirá exactamente por qué falló
-            this.showAlert('Falla de sistema: ' + error.message, 'danger');
-        }
-    }
-
-    async leaveTeam(teamId) {
-        if (!confirm('¿Estás seguro de que deseas salir de este equipo?')) return;
-        
-        try {
-            const currentUser = this.currentUser;
-            
-            const response = await this.fetchAPI(`/teams/${teamId}/leave/`, {
-                method: 'POST',
-                body: JSON.stringify({ user_id: currentUser.id }) 
-            });
-            
-            if (response && response.error) {
-                this.showAlert(response.error, 'warning');
-                return;
-            }
-            
-            this.showAlert('Has salido del equipo exitosamente', 'success');
-            this.closeModal('detailsModal');
-            this.closeModal('teamDetailsModal');
-            
-            if (typeof loadTournaments === 'function') loadTournaments(); 
-            if (typeof loadTeams === 'function') loadTeams();
-            
-        } catch (error) {
-            console.error("Error técnico al salir:", error);
-            this.showAlert('Falla de sistema: ' + error.message, 'danger');
-        }
-    }
-
     // ======================== FORM HELPERS ========================
     getFormData(formId) {
         const form = document.getElementById(formId);
+        if(!form) return {};
         const formData = new FormData(form);
         const data = {};
-        formData.forEach((value, key) => {
-            data[key] = value;
-        });
+        formData.forEach((value, key) => { data[key] = value; });
         return data;
     }
 
     clearForm(formId) {
         const form = document.getElementById(formId);
-        if (form) {
-            form.reset();
-        }
+        if (form) form.reset();
     }
 
     // ======================== ASYNC DATA HELPERS ========================
-    // Nota: Estas funciones ahora son asíncronas porque consultan a Django
-    
     async getTournamentName(tournamentId) {
         try {
             const tournament = await this.fetchAPI(`/tournaments/${tournamentId}/`);
@@ -284,18 +223,59 @@ class App {
         }
     }
 
-    // ======================== TOURNAMENT ACTIONS (CONECTADO A DJANGO) ========================
+    // ======================== TOURNAMENT & TEAM ACTIONS ========================
+    async joinTeam(teamId) {
+        if (!confirm('¿Estás seguro de que deseas unirte a este equipo como jugador?')) return;
+        try {
+            const response = await this.fetchAPI(`/teams/${teamId}/join/`, {
+                method: 'POST',
+                body: JSON.stringify({ user_id: this.currentUser.id }) 
+            });
+            
+            if (response && response.error) {
+                this.showAlert(response.error, 'warning');
+                return; 
+            }
+            this.showAlert('¡Te has unido al equipo exitosamente!', 'success');
+            this.closeModal('detailsModal');
+            this.closeModal('teamDetailsModal');
+            if (typeof loadTournaments === 'function') loadTournaments(); 
+            if (typeof loadTeams === 'function') loadTeams();
+        } catch (error) {
+            this.showAlert('Falla de sistema: ' + error.message, 'danger');
+        }
+    }
+
+    async leaveTeam(teamId) {
+        if (!confirm('¿Estás seguro de que deseas salir de este equipo?')) return;
+        try {
+            const response = await this.fetchAPI(`/teams/${teamId}/leave/`, {
+                method: 'POST',
+                body: JSON.stringify({ user_id: this.currentUser.id }) 
+            });
+            
+            if (response && response.error) {
+                this.showAlert(response.error, 'warning');
+                return;
+            }
+            this.showAlert('Has salido del equipo exitosamente', 'success');
+            this.closeModal('detailsModal');
+            this.closeModal('teamDetailsModal');
+            if (typeof loadTournaments === 'function') loadTournaments(); 
+            if (typeof loadTeams === 'function') loadTeams();
+        } catch (error) {
+            this.showAlert('Falla de sistema: ' + error.message, 'danger');
+        }
+    }
+
     async joinTournament() {
         if (!this.currentUser) {
             this.showAlert('Debes iniciar sesión para unirte a un torneo', 'warning');
             return;
         }
-        
         try {
-            // Pedimos los torneos reales a Django
             const allTournaments = await this.fetchAPI('/tournaments/');
             const tournaments = allTournaments.filter(t => t.status === 'active');
-            
             const select = document.getElementById('joinTournamentSelect');
             
             if (select) {
@@ -306,14 +286,12 @@ class App {
                     option.textContent = `${t.name} (${t.sport}) - ${t.location}`;
                     select.appendChild(option);
                 });
-                
                 if (tournaments.length === 0) {
                     select.innerHTML = '<option value="">No hay torneos disponibles</option>';
                     this.showAlert('No hay torneos activos en este momento', 'info');
                     return;
                 }
             }
-            
             this.showModal('joinTournamentModal');
         } catch (error) {
             this.showAlert('Error al cargar la lista de torneos del servidor', 'danger');
@@ -322,7 +300,6 @@ class App {
     
     async submitJoinRequest(e) {
         e.preventDefault();
-        
         const tournamentId = parseInt(document.getElementById('joinTournamentSelect').value);
         const teamName = document.getElementById('joinTeamName').value;
         const captainName = document.getElementById('joinCaptainName').value;
@@ -334,15 +311,12 @@ class App {
             this.showAlert('Por favor completa todos los campos requeridos', 'danger');
             return;
         }
-        
         try {            
-            // Usamos el fallback local temporalmente para no romper la UI
             const result = db.requestJoinTournamentWithDetails(tournamentId, this.currentUser.id, {
                 teamName, captainName, phone, email, notes
             });
-            
             if (result.success) {
-                this.showAlert('Solicitud enviada al creador del torneo. Te notificaremos cuando sea aprobada.', 'success');
+                this.showAlert('Solicitud enviada al creador del torneo.', 'success');
                 this.closeModal('joinTournamentModal');
                 document.getElementById('joinTournamentForm').reset();
             } else {
@@ -358,55 +332,22 @@ class App {
             this.showAlert('Debes iniciar sesión para crear un torneo', 'warning');
             return;
         }
-        
-        if (!this.canCreateTournament()) {
-            // Actualizamos en local storage por ahora
-            this.currentUser.role = 'creador';
-            localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
-            this.showAlert('¡Ahora tienes permisos para crear torneos!', 'success');
-        }
-        
         window.location.href = 'torneos.html?action=create';
-    }
-
-    showJoinRequestModal(tournamentId) {
-        if (typeof db === 'undefined') return;
-        
-        const teamName = prompt('Ingresa el nombre de tu equipo para unirte al torneo:');
-        if (!teamName) return;
-        
-        const result = db.requestJoinTournament(tournamentId, this.currentUser.id, teamName);
-        if (result.success) {
-            this.showAlert('Solicitud enviada al creador del torneo', 'success');
-        } else {
-            this.showAlert(result.message, 'danger');
-        }
-    }
-
-    respondToRequest(requestId, accepted) {
-        if (typeof db === 'undefined') return;
-        
-        const result = db.respondToTournamentRequest(requestId, accepted);
-        if (result.success) {
-            this.showAlert(result.message, 'success');
-            this.loadTournamentRequests();
-        } else {
-            this.showAlert(result.message, 'danger');
-        }
-    }
-
-    loadTournamentRequests() {
-        // This will be called from tournaments page
     }
 }
 
-
-
+// ======================== INITIALIZATION ========================
 window.app = new App();
 
-// Initialize app when page loads
 document.addEventListener('DOMContentLoaded', () => {
-    if (!window.location.href.includes('login.html') && !window.location.href.includes('signin.html') && !window.location.href.includes('index.html')) {
+    // Solo validamos auth si NO estamos en páginas públicas
+    const isPublicPage = window.location.href.includes('login.html') || 
+                         window.location.href.includes('signin.html') || 
+                         window.location.href.includes('index.html') ||
+                         window.location.pathname === '/' ||
+                         window.location.pathname.endsWith('/');
+
+    if (!isPublicPage) {
         if (app.checkAuth()) {
             if (typeof app.loadNotifications === 'function') {
                 app.loadNotifications();
