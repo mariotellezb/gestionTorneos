@@ -10,14 +10,13 @@ crear, editar y administrar torneos, equipos, calendarios de partidos y resultad
 
 ✨ CARACTERÍSTICAS PRINCIPALES
 ═══════════════════════════════════════════════════════════════════════════════
-✓ Gestión de usuarios (Registro, Inicio de sesión, Cambio de contraseña)
+✓ Gestión de usuarios (Registro, Inicio de sesión)
 ✓ CRUD completo de torneos (Crear, Editar, Eliminar, Ver)
 ✓ Gestión de equipos y participantes
 ✓ Calendario de partidos con programación flexible
 ✓ Registro y consulta de resultados
-✓ Tabla de posiciones automática por torneo
 ✓ Panel de administración con reportes y estadísticas
-✓ Diferentes roles de usuario (Admin, Organizador, Capitán, Usuario)
+✓ Diferentes roles de usuario (Admin, Organizador, Usuario)
 ✓ Interfaz responsiva y moderna
 ✓ Base de datos simulada con localStorage
 
@@ -37,12 +36,8 @@ crear, editar y administrar torneos, equipos, calendarios de partidos y resultad
    - Registrar resultados
    - Ver estadísticas de sus torneos
 
-3. CAPITÁN (capitan)
-   - Crear y editar equipos
-   - Agregar/remover miembros
-   - Ver partidos de su equipo
-
-4. USUARIO/ESPECTADOR (usuario)
+3. USUARIO/ESPECTADOR (usuario)
+   - Crear equipos
    - Ver información pública de torneos
    - Consultar resultados y tablas de posiciones
    - Ver calendario de partidos
@@ -51,21 +46,38 @@ crear, editar y administrar torneos, equipos, calendarios de partidos y resultad
 ═══════════════════════════════════════════════════════════════════════════════
 
 ADMINISTRADOR:
-  Email: admin@torneos.com
-  Contraseña: admin123
+  Email: admin@correo.com
+  Contraseña: Admin12345
 
-ORGANIZADOR:
-  Email: juan@torneos.com
-  Contraseña: pass123
+TEST:
+  Email: test@correo.com
+  Contraseña: test123
 
 Puedes crear más usuarios registrándote desde la página de registro.
+
+💻 Stack Tecnológico
+═══════════════════════════════════════════════════════════════════════════════
+Frontend:
+*   HTML5 / CSS3 (Uso avanzado de Variables CSS para tematización).
+*   JavaScript (Vanilla JS) - Arquitectura orientada a objetos (Clase `App`) para el manejo del estado, peticiones asíncronas y manipulación del DOM.
+
+Backend & API:
+*   Django / Django REST Framework (Python).
+*   Base de datos relacional.
+*   Despliegue en Render (`https://backend-troyan-legacy.onrender.com/api`).
+
+⚙️ Instalación y Uso Local (Frontend)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Clonar el repositorio:
+```bash
+   git clone [https://github.com/mariotellezb/gestionTorneos.git](https://github.com/mariotellezb/gestionTorneos.git)
 
 🚀 CÓMO USAR
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. INICIAR LA APLICACIÓN
-   - Abre index.html en tu navegador
-   - O navega a: http://localhost (si usas un servidor local)
+   - Abre https://frontend-troyan-legacy.vercel.app/ en tu navegador
 
 2. INICIAR SESIÓN
    - Usa las credenciales de prueba adjuntas
@@ -111,7 +123,6 @@ Pages (HTML):
 - admin.html: Panel de administración
 
 JavaScript (js/):
-- db.js: Base de datos simulada con localStorage
 - app.js: Funciones generales y utilidades
 - auth.js: Lógica de autenticación
 
